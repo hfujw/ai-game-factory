@@ -1,0 +1,10 @@
+venv/
+node_modules/
+.env
+test_output.html
+__pycache__/
+*.pyc
+*.pyo
+dist/
+.vite/
+frontend/public/bg.mp4

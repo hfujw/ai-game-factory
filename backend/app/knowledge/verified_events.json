@@ -1,0 +1,122 @@
+[
+  {
+    "event": "1940年 Turing 破译德军 Enigma 密码",
+    "keywords": ["Turing", "Enigma", "密码", "破译", "二战", "Bombe"],
+    "aliases": ["图灵", "恩尼格玛", "密码机", "Enigma密码", "图灵破译", "图灵机"],
+    "facts": {
+      "time": "1940-1941年",
+      "place": "英国布莱切利庄园",
+      "people": ["Alan Turing", "Gordon Welchman"],
+      "story": "二战期间，德国使用 Enigma 密码机加密军事通信。英国在布莱切利庄园建立了密码破译中心，Alan Turing 是核心人物。他设计了 Bombe 机器——一种机电设备，能自动测试 Enigma 的密钥组合，大幅加速破译过程。Turing 的团队每天破译数千条德军电报，盟军因此能预判德军行动。历史学家估计破译 Enigma 将二战缩短了至少两年，挽救了数百万生命。Turing 的关键突破在于发现德军电报中反复出现的固定模式（如天气预报格式），这让 Bombe 能排除大量不可能的组合。",
+      "fun_fact": "Turing 1936年就写了《论可计算数》奠定了计算机科学基础，Enigma 只是他短暂人生中的一个项目。1954年他因同性恋身份被英国政府化学阉割后去世，年仅41岁。2013年英国女王正式赦免了他。"
+    }
+  },
+  {
+    "event": "1989年圣诞节 Guido 发明了 Python",
+    "keywords": ["Guido", "Python", "圣诞节", "ABC", "Monty Python"],
+    "aliases": ["吉多", "派森", "Python语言", "python", "龟叔", "python发明"],
+    "facts": {
+      "time": "1989年12月",
+      "place": "荷兰阿姆斯特丹",
+      "people": ["Guido van Rossum"],
+      "story": "1989年圣诞节假期，荷兰程序员 Guido van Rossum 待在家里觉得无聊。他之前参与过 ABC 语言项目——一门面向教学的语言，语法清晰但速度慢且不能操作系统资源。ABC 项目被砍后，Guido 想写一个'更好的 ABC'——保留优雅语法，但能真正干活（读写文件、系统调用、网络）。他用假期写了一个原型。名字来自他喜欢的 BBC 喜剧《Monty Python's Flying Circus》——Python，巨蟒。1991年发布第一个公开版本。",
+      "fun_fact": "Guido 在社区被称为 BDFL（Benevolent Dictator For Life，仁慈的终身独裁者）——这不是他自封的，是社区自愿给他的称号。他在2018年因为 PEP 572 的争议辞去了这个身份。"
+    }
+  },
+  {
+    "event": "1974年 Cerf 和 Kahn 画出 TCP 草图",
+    "keywords": ["Cerf", "Kahn", "TCP", "互联网", "ARPANET", "图灵奖"],
+    "aliases": ["瑟夫", "卡恩", "TCP/IP", "互联网之父", "网络协议", "TCP协议"],
+    "facts": {
+      "time": "1974年5月",
+      "place": "美国斯坦福大学",
+      "people": ["Vint Cerf", "Bob Kahn"],
+      "story": "1974年，Vint Cerf 和 Bob Kahn 在斯坦福大学研究 ARPANET——美国国防部资助的实验性计算机网络。当时 ARPANET 已经在四个节点间证明计算机可以通信，但缺少通用传输协议。Cerf 和 Kahn 要解决的问题：在不可靠的网络上建立可靠的连接。他们在一张信封背面画了架构草图——两个节点，一条虚线代表不可靠信道，在虚线之上构建可靠通信规则。1974年12月发表论文《A Protocol for Packet Network Intercommunication》，定义了 TCP 协议。两人在2004年获得图灵奖——计算机界的诺贝尔奖。",
+      "fun_fact": "那张信封的复制品 Cerf 后来在无数演讲中展示过。他开玩笑说'互联网是从一张废纸上开始的'。"
+    }
+  },
+  {
+    "event": "1991年 Linus 写下了 Linux 的第一行代码",
+    "keywords": ["Linus", "Linux", "Minix", "Git", "芬兰"],
+    "aliases": ["林纳斯", "linux内核", "linux操作系统", "托瓦兹", "linux"],
+    "facts": {
+      "time": "1991年8月",
+      "place": "芬兰赫尔辛基大学",
+      "people": ["Linus Torvalds", "Andrew Tanenbaum"],
+      "story": "1991年，21岁的芬兰大学生 Linus Torvalds 买了一台386电脑，想在上面跑 Unix。但正版 Unix 太贵，他就用了教学用的 Minix 系统。Minix 功能有限，Linus 决定自己写一个操作系统内核。1991年8月25日，他在 Minix 新闻组发了一条帖子：'我正在写一个（免费的）操作系统（只是爱好，不会成为大东西）……'。这就是 Linux 的诞生。'不会成为大东西'——这句话后来成了开源社区最著名的误判。今天 Linux 运行在全球 90% 的服务器、所有 Android 手机、超级计算机上。",
+      "fun_fact": "Linus 在2005年因为和商业版本管理工具 BitKeeper 闹翻了，花了一个周末写出了 Git 的第一个版本。两个改变世界的项目——Linux 和 Git——都是他因为'不爽'而写的。"
+    }
+  },
+  {
+    "event": "1995年 Java 的诞生",
+    "keywords": ["Java", "James Gosling", "Oak", "Sun", "Write Once Run Anywhere"],
+    "aliases": ["java", "高斯林", "Java语言", "JVM", "java虚拟机"],
+    "facts": {
+      "time": "1991-1995年",
+      "place": "美国 Sun Microsystems",
+      "people": ["James Gosling", "Patrick Naughton", "Mike Sheridan"],
+      "story": "1991年，Sun 公司的 James Gosling 带领一个叫'Green'的秘密项目——给家用电器（电视、冰箱、微波炉）写操作系统。他们最初想用 C++ 但发现太复杂容易出错。Gosling 干脆自己发明了一门语言，最初叫 Oak——因他办公室窗外有一棵橡树。后来发现 Oak 商标已被注册，团队出去喝了杯咖啡，回来决定叫 Java——印尼爪哇岛的咖啡。1995年正式发布，口号'Write Once, Run Anywhere'。Java 的虚拟机架构让同一份代码能在任何设备上跑——这革命性的想法直接改变了企业软件开发。",
+      "fun_fact": "Java 最初是为电视机顶盒设计的。如果当年 Sun 没有转向互联网，Java 可能只是你遥控器里的一段代码。"
+    }
+  },
+  {
+    "event": "1970年 Codd 发明了关系型数据库",
+    "keywords": ["Codd", "关系模型", "SQL", "IBM", "Oracle", "Ellison"],
+    "aliases": ["科德", "关系数据库", "埃里森", "sql数据库", "MySQL"],
+    "facts": {
+      "time": "1970年",
+      "place": "美国 IBM 圣何塞研究实验室",
+      "people": ["Edgar F. Codd", "Larry Ellison"],
+      "story": "1970年，IBM 研究员 Edgar Codd 发表了一篇11页的论文《A Relational Model of Data for Large Shared Data Banks》。当时数据库靠硬编码的指针导航——查数据要写复杂代码。Codd 提出把数据全存成表格（关系），查询用声明式语言。IBM 冷落了这个想法——他们正靠旧的层次数据库 IMS 赚大钱。但 Larry Ellison 读到了这篇论文，1977年立刻创立 Oracle，1979年发布第一个商用关系数据库——比 IBM 早了两年。Oracle 现在是全球第二大软件公司。Codd 1981年获图灵奖。",
+      "fun_fact": "一篇被自己公司冷落的11页论文，被竞争对手读到后创造了千亿美元产业的 Oracle。计算机史上最贵的'不重视'。"
+    }
+  },
+  {
+    "event": "1958年 McCarthy 发明了 Lisp",
+    "keywords": ["McCarthy", "Lisp", "MIT", "人工智能", "垃圾回收"],
+    "aliases": ["麦卡锡", "lisp语言", "LISP", "GC", "函数式编程"],
+    "facts": {
+      "time": "1958年",
+      "place": "美国 MIT",
+      "people": ["John McCarthy"],
+      "story": "1958年，MIT 教授 John McCarthy 发明了 Lisp——历史上第二门高级编程语言（仅次于 Fortran）。McCarthy 想做的是'机器推理'——让计算机做逻辑推理而不只是计算。Lisp 的核心思想：代码和数据是同一种东西（都叫 S-表达式），函数是第一等公民。这个思想深刻影响了后来的所有编程语言。Lisp 还诞生了垃圾回收、if-then-else 条件语句、递归。McCarthy 还是'Artificial Intelligence'（人工智能）这个词的命名者。",
+      "fun_fact": "McCarthy 在1959年发明垃圾回收时说：'我就是觉得那些用完了还占着地方的数据很像垃圾。'一个随口起的名字，现在所有主流语言都在用。"
+    }
+  },
+  {
+    "event": "1971年 Bayer 发明了 B 树",
+    "keywords": ["Bayer", "B树", "波音", "数据库", "索引"],
+    "aliases": ["拜尔", "B+树", "数据库索引", "BTree", "b树索引"],
+    "facts": {
+      "time": "1971年",
+      "place": "美国西雅图波音公司",
+      "people": ["Rudolf Bayer", "Ed McCreight"],
+      "story": "1971年，德国工程师 Rudolf Bayer 在波音公司工作。波音有海量零件数据存在硬盘上，每次查询要读磁盘——当时硬盘很慢，一次要几百毫秒。Bayer 需要一个数据结构让磁盘读取次数尽可能少。他的方案：一个节点存几百个 key，树高压到3-4层。这就是 B 树——B 代表 Boeing。它的变体 B+ 树现在是 MySQL、PostgreSQL、Oracle 所有关系数据库的默认索引结构。50年前一个飞机工程师为了'在慢硬盘上找零件'发明的算法，现在每天支撑全球几千亿次数据库查询。",
+      "fun_fact": "Bayer 自己说 B 代表 Boeing，也有人说是 Balanced。两种说法他都笑而不语。"
+    }
+  },
+  {
+    "event": "2009年 antirez 花了两个星期写了 Redis",
+    "keywords": ["antirez", "Redis", "西西里", "缓存", "MySQL"],
+    "aliases": ["redis缓存", "Redis数据库", "内存数据库", "nosql"],
+    "facts": {
+      "time": "2009年",
+      "place": "意大利西西里岛",
+      "people": ["Salvatore Sanfilippo (antirez)"],
+      "story": "2009年，意大利程序员 Salvatore Sanfilippo（网名 antirez）在运营一个网站流量分析服务 LLOOGG。用户访问网站→记录日志→生成统计图表。MySQL 太慢了——写一条日志几毫秒，他的服务需要每秒处理几千条。他试了各种优化都不够。他想：为什么不能把数据全放在内存里？他花了两周用 C 语言写了一个内存键值存储——Redis（REmote DIctionary Server）。他把代码发到 Hacker News，半小时内登上首页。Twitter、GitHub、Pinterest 很快采用。VMWare 聘请他全职维护 Redis。2020年他宣布退出：'我写了10年代码，够了。我想去写小说、做艺术、陪家人。'一个创造全球最流行缓存系统的人，巅峰退场。",
+      "fun_fact": "Redis 的核心只有几万行 C 代码。antirez 离开后，Redis Labs 继续维护——但社区很多人说'没有 antirez 的 Redis 已经不是原来的 Redis 了'。"
+    }
+  },
+  {
+    "event": "1993年 第一款图形浏览器 Mosaic 发布",
+    "keywords": ["Mosaic", "Marc Andreessen", "浏览器", "Netscape", "互联网"],
+    "aliases": ["马赛克浏览器", "安德森", "网景", "Netscape", "图形浏览器", "第一个浏览器"],
+    "facts": {
+      "time": "1993年",
+      "place": "美国伊利诺伊大学 NCSA",
+      "people": ["Marc Andreessen", "Eric Bina"],
+      "story": "1993年，伊利诺伊大学的学生 Marc Andreessen 和 Eric Bina 写出了 Mosaic——第一个真正普及的图形化网页浏览器。在此之前，互联网是纯文本的——黑色屏幕、绿色字符、只有大学和军队在用。Mosaic 把图片和文字放在同一页面上，让普通人也能浏览网页。它对互联网的意义相当于 iPhone 对智能手机——不是第一个，但让所有人知道了'原来可以这样'。Andreessen 毕业后创办了 Netscape，1994年发布 Netscape Navigator——Mosaic 的商业化版本。Netscape 1995年上市，24岁的 Andreessen 一夜之间成为亿万富翁。1994年 Netscape 还发明了 SSL 加密协议和 Cookie——你今天用的 HTTPS 和'记住登录状态'都源于这家公司。",
+      "fun_fact": "Andreessen 后来成为硅谷最有影响力的风险投资人之一，投了 Facebook、GitHub、Skype。他有一句名言：'软件正在吞噬世界。'"
+    }
+  }
+]

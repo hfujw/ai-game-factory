@@ -1,0 +1,441 @@
+/* ============================================================
+   AI 游戏工坊 — 像素游戏视觉设计系统
+   Retro Pixel Game Design System v1.0
+
+   设计方向：Game Boy 遇见现代 Web
+   核心理念：80年代街机 + SNES 色彩 + 现代 CSS 能力
+   注入方式：coder Agent 生成游戏时参考此规范
+   ============================================================ */
+
+/* === 1. 配色方案（4套主题） === */
+
+/* 主题 1: 经典绿屏 — CRT 终端感 */
+.theme-green {
+  --bg-primary:    #0a0e0a;
+  --bg-secondary:  #0f1a0f;
+  --bg-card:       #132213;
+  --text-primary:  #33ff33;
+  --text-secondary:#22aa22;
+  --text-dim:      #116611;
+  --accent:        #ffcc00;
+  --accent-glow:   #ffe066;
+  --danger:        #ff4444;
+  --success:       #44ff44;
+  --border:        #33ff33;
+  --border-dim:    #1a4a1a;
+  --scanline:      rgba(0, 0, 0, 0.08);
+  --shadow-color:  rgba(51, 255, 51, 0.15);
+}
+
+/* 主题 2: 琥珀暖色 — 80年代终端 */
+.theme-amber {
+  --bg-primary:    #1a1005;
+  --bg-secondary:  #241808;
+  --bg-card:       #2a1c0a;
+  --text-primary:  #ffb000;
+  --text-secondary:#cc8800;
+  --text-dim:      #885500;
+  --accent:        #ff6600;
+  --accent-glow:   #ff9933;
+  --danger:        #ff3333;
+  --success:       #33cc33;
+  --border:        #ffb000;
+  --border-dim:    #553300;
+  --scanline:      rgba(0, 0, 0, 0.06);
+  --shadow-color:  rgba(255, 176, 0, 0.12);
+}
+
+/* 主题 3: 赛博紫 — 90年代霓虹 */
+.theme-cyber {
+  --bg-primary:    #0a0a1a;
+  --bg-secondary:  #101028;
+  --bg-card:       #151535;
+  --text-primary:  #cc88ff;
+  --text-secondary:#9966cc;
+  --text-dim:      #553388;
+  --accent:        #00ffff;
+  --accent-glow:   #66ffff;
+  --danger:        #ff4488;
+  --success:       #44ffaa;
+  --border:        #cc88ff;
+  --border-dim:    #332255;
+  --scanline:      rgba(0, 0, 0, 0.07);
+  --shadow-color:  rgba(204, 136, 255, 0.12);
+}
+
+/* 主题 4: Game Boy 灰绿 — 掌机原味 */
+.theme-gameboy {
+  --bg-primary:    #9bbc0f;
+  --bg-secondary:  #8bac0f;
+  --bg-card:       #7b9c0f;
+  --text-primary:  #0f380f;
+  --text-secondary:#306230;
+  --text-dim:      #4a7a30;
+  --accent:        #0f380f;
+  --accent-glow:   #306230;
+  --danger:        #ff0000;
+  --success:       #0f380f;
+  --border:        #0f380f;
+  --border-dim:    #4a7a30;
+  --scanline:      rgba(0, 0, 0, 0.04);
+  --shadow-color:  rgba(15, 56, 15, 0.1);
+}
+
+/* === 2. 全局样式 === */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Courier New', 'Source Code Pro', monospace;
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow-x: hidden;
+}
+
+/* CRT 扫描线效果 */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    var(--scanline) 0px,
+    transparent 2px,
+    var(--scanline) 3px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* === 3. 像素化边框系统 === */
+
+/* 基础像素边框 — 2px 立体像素感 */
+.pixel-border {
+  border: 3px solid var(--border);
+  box-shadow:
+    inset 2px 2px 0 0 rgba(255,255,255,0.1),
+    inset -2px -2px 0 0 rgba(0,0,0,0.3),
+    4px 4px 0 0 var(--shadow-color);
+  image-rendering: pixelated;
+}
+
+/* 像素按钮 */
+.pixel-btn {
+  display: inline-block;
+  padding: 10px 24px;
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--bg-primary);
+  background: var(--text-primary);
+  border: 3px solid var(--text-primary);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  transition: all 0.1s steps(1);
+  image-rendering: pixelated;
+  box-shadow:
+    inset 2px 2px 0 0 rgba(255,255,255,0.25),
+    inset -2px -2px 0 0 rgba(0,0,0,0.25),
+    3px 3px 0 0 var(--shadow-color);
+}
+
+.pixel-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-primary);
+  transform: translate(1px, 1px);
+  box-shadow:
+    inset 2px 2px 0 0 rgba(255,255,255,0.25),
+    inset -2px -2px 0 0 rgba(0,0,0,0.25),
+    2px 2px 0 0 var(--shadow-color);
+}
+
+.pixel-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow:
+    inset -2px -2px 0 0 rgba(255,255,255,0.15),
+    inset 2px 2px 0 0 rgba(0,0,0,0.3),
+    1px 1px 0 0 var(--shadow-color);
+}
+
+/* === 4. 游戏容器 === */
+.game-container {
+  width: 100%;
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 24px;
+  background: var(--bg-secondary);
+  border: 4px solid var(--border);
+  box-shadow:
+    inset 0 0 30px rgba(0,0,0,0.3),
+    0 0 20px var(--shadow-color),
+    0 0 60px rgba(0,0,0,0.5);
+  position: relative;
+}
+
+/* === 5. 标题画面 === */
+.title-screen {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.title-screen h1 {
+  font-size: 28px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow:
+    3px 3px 0 var(--bg-primary),
+    0 0 20px var(--accent-glow);
+  margin-bottom: 16px;
+  animation: pixel-blink 1.5s steps(1) infinite;
+}
+
+.title-screen .subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  letter-spacing: 2px;
+  margin-bottom: 32px;
+}
+
+@keyframes pixel-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* === 6. 操作说明面板 === */
+.instructions {
+  background: var(--bg-card);
+  border: 2px dashed var(--border-dim);
+  padding: 16px;
+  margin: 16px 0;
+  text-align: left;
+}
+
+.instructions h3 {
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.instructions p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 4px 0;
+}
+
+/* === 7. 谜题交互区 === */
+.puzzle-area {
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  padding: 20px;
+  margin: 16px 0;
+  min-height: 200px;
+}
+
+/* 密码破译输入 */
+.cipher-input {
+  width: 100%;
+  padding: 12px 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 20px;
+  letter-spacing: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 2px solid var(--border);
+  text-align: center;
+  transition: border-color 0.2s;
+}
+
+.cipher-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.cipher-input.correct { border-color: var(--success); color: var(--success); }
+.cipher-input.wrong { border-color: var(--danger); color: var(--danger); animation: shake 0.3s steps(3); }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+/* 排序卡片 */
+.sort-card {
+  display: inline-block;
+  padding: 10px 16px;
+  margin: 6px;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  cursor: grab;
+  user-select: none;
+  font-size: 14px;
+  letter-spacing: 1px;
+  transition: all 0.1s steps(1);
+}
+
+.sort-card:hover { background: var(--bg-primary); border-color: var(--accent); }
+.sort-card.selected { background: var(--text-primary); color: var(--bg-primary); }
+.sort-card.correct-pos { border-color: var(--success); box-shadow: 0 0 8px var(--success); }
+.sort-card.wrong-pos { border-color: var(--danger); animation: shake 0.3s steps(3); }
+
+/* 逻辑选项 */
+.logic-option {
+  display: block;
+  width: 100%;
+  padding: 12px 20px;
+  margin: 8px 0;
+  font-family: inherit;
+  font-size: 15px;
+  letter-spacing: 1px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 2px solid var(--border-dim);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.1s steps(1);
+}
+
+.logic-option:hover {
+  background: var(--bg-primary);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.logic-option.correct {
+  border-color: var(--success);
+  background: rgba(68, 255, 68, 0.1);
+  color: var(--success);
+}
+
+.logic-option.wrong {
+  border-color: var(--danger);
+  animation: shake 0.3s steps(3);
+}
+
+/* === 8. 结果画面 === */
+.result-screen {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.result-screen h2 {
+  font-size: 24px;
+  letter-spacing: 3px;
+  margin-bottom: 12px;
+}
+
+.result-screen .message {
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin: 16px 0;
+  line-height: 1.8;
+}
+
+/* 历史真相弹层 */
+.history-modal {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-secondary);
+  border: 4px solid var(--border);
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  z-index: 1000;
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.7),
+    0 0 30px var(--shadow-color);
+}
+
+.history-modal.visible { display: block; }
+
+.history-modal h4 {
+  font-size: 16px;
+  letter-spacing: 2px;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+.history-modal p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  margin-bottom: 8px;
+}
+
+/* === 9. 辅助元素 === */
+
+/* 进度条 */
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-dim);
+  margin: 12px 0;
+}
+
+.progress-bar .fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s steps(5);
+}
+
+/* 提示文字 */
+.hint-text {
+  font-size: 13px;
+  color: var(--text-dim);
+  text-align: center;
+  margin: 8px 0;
+  font-style: italic;
+}
+
+/* 剩余次数 */
+.attempts-left {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 12px 0;
+}
+
+.attempts-left .dot {
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.attempts-left .dot.used {
+  background: transparent;
+  border-color: var(--border-dim);
+}
+
+/* === 10. 响应式 === */
+@media (max-width: 640px) {
+  .game-container {
+    margin: 10px;
+    padding: 16px;
+  }
+  .title-screen h1 { font-size: 20px; letter-spacing: 2px; }
+  .cipher-input { font-size: 16px; padding: 10px; }
+}
+
+/* ============================================================
+   使用说明（coder Agent prompt 里引用）：
+
+   1. 选主题：默认用 theme-green，解谜类用 theme-amber，编程类用 theme-cyber
+   2. 结构：body > .game-container > (.title-screen | .instructions | .puzzle-area | .result-screen)
+   3. 按钮用 .pixel-btn，输入用 .cipher-input，选项用 .logic-option
+   4. 结果画面必须包含 .history-modal 用于"历史真相"展示
+   5. 状态管理：gameState.phase ∈ {title, howto, playing, win, lose}
+   6. 3次尝试机会，用 .attempts-left 显示
+   ============================================================ */
