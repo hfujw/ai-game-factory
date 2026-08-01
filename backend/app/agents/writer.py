@@ -33,9 +33,10 @@ def writer_node(state: GameFactoryState) -> dict:
     puzzle_design = state.get("puzzle_design", {})
     search_results = state.get("search_results", [])
 
-    # 拼史料
+    # 拼史料（crawler 返回 title + content/key_facts，没有 snippet）
     sources_text = "\n".join(
-        f"- {r.get('title', '')}: {r.get('snippet', '')}"
+        f"- {r.get('title', '')}: " +
+        ("; ".join(r.get('key_facts', [])) if r.get('key_facts') else r.get('content', '')[:300])
         for r in search_results[:3]
     )
 

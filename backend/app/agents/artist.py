@@ -7,7 +7,7 @@
 """
 
 from app.graph.state import GameFactoryState
-from app.llm_client import chat
+from app.llm_client import chat, _strip_markdown_fence
 
 SYSTEM_PROMPT = """你是一个像素风 CSS 艺术家，专精复古游戏视觉设计。你会收到一个 HTML 游戏代码，你的任务是增强它的视觉效果。
 
@@ -57,16 +57,7 @@ def artist_node(state: GameFactoryState) -> dict:
 请增强这个游戏的视觉风格，保持 JS 逻辑不变，只改 CSS 和 HTML 结构（可加像素风装饰元素）。"""
 
         styled = chat(prompt, system=SYSTEM_PROMPT, temperature=0.5)
-
-        # 清洗
-        styled = styled.strip()
-        if styled.startswith("```html"):
-            styled = styled[7:]
-        elif styled.startswith("```"):
-            styled = styled.split("\n", 1)[1] if "\n" in styled else styled[3:]
-        if styled.endswith("```"):
-            styled = styled[:-3]
-        styled = styled.strip()
+        styled = _strip_markdown_fence(styled)
 
         if not styled.lower().startswith("<!doctype"):
             styled = game_code  # 如果 LLM 返回不完整，回退到原代码

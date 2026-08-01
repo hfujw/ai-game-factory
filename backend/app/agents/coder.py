@@ -5,7 +5,7 @@
 """
 
 from app.graph.state import GameFactoryState
-from app.llm_client import chat
+from app.llm_client import chat, _strip_markdown_fence
 
 SYSTEM_PROMPT = """你是一个像素风 HTML 游戏开发者。你必须严格遵循下面的「游戏契约」生成代码。
 
@@ -91,16 +91,7 @@ def coder_node(state: GameFactoryState) -> dict:
 
     try:
         code = chat(prompt, system=SYSTEM_PROMPT, temperature=0.3)
-
-        # 清洗 markdown 包裹
-        code = code.strip()
-        if code.startswith("```html"):
-            code = code[7:]
-        elif code.startswith("```"):
-            code = code.split("\n", 1)[1] if "\n" in code else code[3:]
-        if code.endswith("```"):
-            code = code[:-3]
-        code = code.strip()
+        code = _strip_markdown_fence(code)
 
         if not code.lower().startswith("<!doctype"):
             code = f"<!DOCTYPE html>\n{code}"

@@ -4,23 +4,28 @@ WebSocket 端点：/ws/generate
 - 用户输入历史事件 → 触发 LangGraph Agent Pipeline → 实时推送进度 → 返回游戏代码
 """
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-from app.graph.state import initial_state
-from app.graph.workflow import build_workflow
-from app.ws_manager import ws_manager
+import logging
 import uuid
 import asyncio
 import json
 import os
 
-app = FastAPI(title="AI 游戏工坊", version="0.1.0")
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from app.graph.state import initial_state
+from app.graph.workflow import build_workflow
+from app.ws_manager import ws_manager
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
+logger = logging.getLogger("main")
+
+app = FastAPI(title="时光像素", version="0.1.0")
 
 # CORS — 允许前端开发时的跨域请求（Vite dev server: localhost:5173）
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

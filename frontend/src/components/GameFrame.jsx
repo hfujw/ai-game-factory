@@ -11,7 +11,7 @@ export default function GameFrame({ gameCode }) {
         <iframe
           className="game-frame"
           srcDoc={gameCode}
-          sandbox="allow-scripts allow-same-origin"
+          sandbox="allow-scripts"
           title="生成的游戏"
         />
       ) : (

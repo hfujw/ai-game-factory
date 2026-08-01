@@ -18,7 +18,7 @@ import json
 import os
 import re
 from app.graph.state import GameFactoryState
-from app.llm_client import chat_json
+from app.llm_client import chat_json, _strip_markdown_fence
 
 _KB_PATH = os.path.join(os.path.dirname(__file__), "..", "knowledge", "verified_events.json")
 with open(_KB_PATH, "r", encoding="utf-8") as _f:
@@ -117,32 +117,24 @@ def reviewer_node(state: GameFactoryState) -> dict:
         for r in search_results[:3]
     )
 
-    # 传完整代码（不再截断！）
+    # 传完整代码
     prompt = f"""审查这个 {len(game_code)} 字符的 HTML 游戏。
 
 【游戏剧本】
-{game_script[:400]}
+{game_script[:500]}
 
 【原始史料】
 {sources}
 
 【完整游戏代码】
-{game_code[:4000]}
+{game_code}
 
 当前重试: {retry_count}/3。结构检查已通过，请审查可玩性+历史+体验。返回 JSON。"""
 
     try:
         # 用 chat_json 获取结构化结果
         response = chat_json(prompt, system=SYSTEM_PROMPT)
-        response = response.strip()
-        if response.startswith("```json"):
-            response = response[7:]
-        elif response.startswith("```"):
-            response = response.split("\n", 1)[1] if "\n" in response else response[3:]
-        if response.endswith("```"):
-            response = response[:-3]
-        response = response.strip()
-
+        response = _strip_markdown_fence(response)
         result = json.loads(response)
     except Exception:
         # LLM 审查异常 → 结构已经通过，放行但记录

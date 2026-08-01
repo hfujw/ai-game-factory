@@ -6,8 +6,10 @@
 使用 DeepSeek API 分析史料内容，不是关键词匹配。
 """
 
+import json
+
 from app.graph.state import GameFactoryState
-from app.llm_client import chat_json
+from app.llm_client import chat_json, _strip_markdown_fence
 
 SYSTEM_PROMPT = """你是一个游戏策划师，专门把计算机历史事件改编成解谜小游戏。
 
@@ -43,9 +45,9 @@ def planner_node(state: GameFactoryState) -> dict:
     user_input = state["user_input"]
     search_results = state.get("search_results", [])
 
-    # 拼接史料文本
+    # 拼接史料文本（crawler 返回 content + key_facts，没有 snippet）
     sources_text = "\n\n".join(
-        f"[来源{i+1}] {r.get('title', '')}\n{r.get('snippet', '')}\n{r.get('content', '')[:500]}"
+        f"[来源{i+1}] {r.get('title', '')}\n{r.get('content', '')[:500]}"
         for i, r in enumerate(search_results)
     )
 
@@ -58,15 +60,7 @@ def planner_node(state: GameFactoryState) -> dict:
 
     try:
         response = chat_json(prompt, system=SYSTEM_PROMPT)
-        import json
-
-        # 清洗 LLM 返回值——去掉可能的 markdown 代码块包裹
-        response = response.strip()
-        if response.startswith("```"):
-            response = response.split("\n", 1)[1]
-            if response.endswith("```"):
-                response = response[:-3]
-
+        response = _strip_markdown_fence(response)
         result = json.loads(response)
 
         if not result.get("material_sufficient", False):

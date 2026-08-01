@@ -12,7 +12,7 @@
 import json
 import os
 from app.graph.state import GameFactoryState
-from app.llm_client import chat_json
+from app.llm_client import chat_json, _strip_markdown_fence
 
 # 加载验证知识库
 _KB_PATH = os.path.join(os.path.dirname(__file__), "..", "knowledge", "verified_events.json")
@@ -125,11 +125,7 @@ def crawler_node(state: GameFactoryState) -> dict:
             f"请检索关于以下计算机历史事件的资料：\n\n{user_input}\n\n请提供你确定知道的事实。不要编造。",
             system=DEEPSEEK_RETRIEVAL_PROMPT,
         )
-        response = response.strip()
-        if response.startswith("```"):
-            response = response.split("\n", 1)[1]
-            if response.endswith("```"):
-                response = response[:-3]
+        response = _strip_markdown_fence(response)
 
         result = json.loads(response)
 
