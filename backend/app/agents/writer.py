@@ -1,39 +1,75 @@
-"""文案 Agent — 基于史料写游戏剧本。
+"""文案 Agent — 输出结构化 GameScript JSON。
 
-输入：search_results + puzzle_type + puzzle_design
-输出：game_script（背景故事 + 谜题描述 + 通关/失败台词）
-
-使用 DeepSeek 生成有沉浸感的游戏叙事。
+下游 coder/artist 按字段消费，不再从散文里猜信息。
 """
 
+import json
 from app.graph.state import GameFactoryState
 from app.llm_client import chat
 
-SYSTEM_PROMPT = """你是一个游戏编剧，专门为像素风解谜小游戏写剧本。
+SYSTEM_PROMPT = """你是一个历史教育像素游戏的编剧。
 
-你会收到：
-- 一段计算机历史事件的史料
-- 谜题类型（cipher/sequence/logic）和机制设计
+你的唯一产出是一个严格的 JSON 对象。下游有 2 个 Agent 消费你的输出：
+- coder_agent：读 puzzle、history_facts、victory_line、defeat_line、opening_hook
+- artist_agent：读 visual.palette、visual.mood、visual.decorations
 
-你的任务：写一份 300-500 字的游戏剧本，包含三部分：
-1. 【背景故事】：把历史事件改写成有沉浸感的开场叙事（让玩家觉得"我在现场"）
-2. 【谜题描述】：基于策划给的谜题机制，用游戏化的语言告诉玩家要做什么
-3. 【通关台词】和【失败台词】：各一句，像素游戏风格的简短台词
+【输出格式】
+{
+  "event": "事件名",
+  "year": 年份数字,
+  "location": "地点",
+  "protagonist": "主角名/身份",
+  "antagonist": "对抗方",
+  "core_conflict": "一句话冲突悬念",
+  "atmosphere": "氛围关键词，逗号分隔",
+  "opening_hook": "标题画面显示的悬念句，让玩家想点开始",
 
-风格要求：
-- 像素风、复古感、像 Game Boy 时代的游戏文本
-- 不要学术腔，要有冒险感
-- 中文，加少量英文术语可以（如 Enigma、Python）"""
+  "puzzle": {
+    "type": "cipher|sequence|logic",
+    "surface": "谜题表皮——玩家看到的场景描述，如'一封截获的德军密电'",
+    "answer": "正确答案",
+    "items_count": 排序类元素数量,
+    "items_labels": ["标签1","标签2"],
+    "hints": [
+      {"level":1, "text":"模糊提示"},
+      {"level":2, "text":"中等提示"},
+      {"level":3, "text":"直接提示"}
+    ],
+    "max_attempts": 3
+  },
+
+  "history_facts": [
+    "核心事实1（一句话）",
+    "核心事实2（一句话）",
+    "延伸思考（一句话）"
+  ],
+
+  "victory_line": "像素风通关台词，简短有力",
+  "defeat_line": "像素风失败鼓励台词，简短",
+
+  "visual": {
+    "palette": ["#0d0a08","#e8702a","#34d399","#e8ddd0","#5a4a3a"],
+    "mood": "视觉情绪描述",
+    "decorations": ["装饰元素1","装饰元素2"]
+  }
+}
+
+【铁律】
+- 必须输出合法 JSON，不要 markdown 包裹，不要注释
+- puzzle.hints 必须 3 条，level 1→2→3 从模糊到直接
+- history_facts 必须 3 条，第 3 条是延伸思考
+- victory_line 和 defeat_line 各不超过 20 字
+- 所有内容必须基于史料，不编造"""
 
 
 def writer_node(state: GameFactoryState) -> dict:
-    """基于史料 + 谜题机制 → LLM 生成游戏剧本。"""
+    """基于史料 + 谜题机制 → LLM 输出结构化 GameScript JSON。"""
     user_input = state["user_input"]
     puzzle_type = state["puzzle_type"]
     puzzle_design = state.get("puzzle_design", {})
     search_results = state.get("search_results", [])
 
-    # 拼史料（crawler 返回 title + content/key_facts，没有 snippet）
+    # 拼史料
     sources_text = "\n".join(
         f"- {r.get('title', '')}: " +
         ("; ".join(r.get('key_facts', [])) if r.get('key_facts') else r.get('content', '')[:300])
@@ -45,21 +81,67 @@ def writer_node(state: GameFactoryState) -> dict:
 谜题机制：{puzzle_design.get('mechanic', '')}
 规则：{puzzle_design.get('rules', '')}
 
-史料参考：
-{sources_text}
+史料：
+{sources_text if sources_text else '（使用你的知识）'}
 
-请写一份游戏剧本（300-500字），包含【背景故事】【谜题描述】【通关台词】【失败台词】四个部分。"""
+请输出完整 GameScript JSON。puzzle.type 必须是 {puzzle_type}。"""
 
     try:
-        script = chat(prompt, system=SYSTEM_PROMPT, temperature=0.8)
+        raw = chat(prompt, system=SYSTEM_PROMPT, temperature=0.5)
+
+        # 清洗 markdown
+        cleaned = raw.strip()
+        for prefix in ["```json", "```"]:
+            if cleaned.startswith(prefix):
+                cleaned = cleaned[len(prefix):].strip()
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3].strip()
+
+        script = json.loads(cleaned)
+
+        # 确保必填字段存在
+        if "puzzle" not in script:
+            script["puzzle"] = {}
+        script["puzzle"]["type"] = puzzle_type
+        if "max_attempts" not in script["puzzle"]:
+            script["puzzle"]["max_attempts"] = 3
+        if "hints" not in script["puzzle"] or not script["puzzle"]["hints"]:
+            script["puzzle"]["hints"] = [
+                {"level": 1, "text": "再仔细看看..."},
+                {"level": 2, "text": "注意关键线索"},
+                {"level": 3, "text": "答案就在眼前"},
+            ]
+
         return {
-            "game_script": script,
+            "game_script": json.dumps(script, ensure_ascii=False),  # 存为 JSON 字符串，兼容 state
+            "script_data": script,  # 结构化数据，coder 可以直接读
             "script_keywords": [user_input, puzzle_type],
-            "agent_logs": [{"agent": "writer", "action": "script_written", "detail": f"{len(script)} chars"}],
+            "agent_logs": [{"agent": "writer", "action": "script_written",
+                           "detail": f"topic={script.get('event',user_input)}, chars={len(raw)}"}],
         }
     except Exception as e:
+        # JSON 解析失败 → 回退到纯文本，但标记给 coder
+        fallback = {
+            "event": user_input,
+            "puzzle": {
+                "type": puzzle_type,
+                "surface": puzzle_design.get("mechanic", ""),
+                "answer": puzzle_design.get("win_condition", ""),
+                "hints": [
+                    {"level": 1, "text": "仔细看看线索..."},
+                    {"level": 2, "text": "也许换个思路"},
+                    {"level": 3, "text": "答案可能很简单"},
+                ],
+                "max_attempts": 3,
+            },
+            "history_facts": ["（史料解析失败，请使用剧本信息）"],
+            "victory_line": "你成功了！",
+            "defeat_line": "没关系，再试一次。",
+            "visual": {"mood": "像素复古"},
+        }
         return {
-            "game_script": f"[剧本生成失败: {e}]\n\n历史事件：{user_input}\n谜题类型：{puzzle_type}",
+            "game_script": json.dumps(fallback, ensure_ascii=False),
+            "script_data": fallback,
             "script_keywords": [user_input, puzzle_type],
-            "agent_logs": [{"agent": "writer", "action": "error", "detail": str(e)}],
+            "agent_logs": [{"agent": "writer", "action": "fallback", "detail": str(e)}],
         }

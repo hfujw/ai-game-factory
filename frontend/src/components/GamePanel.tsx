@@ -1,30 +1,42 @@
 import { useState } from 'react'
-import { Maximize2, Minimize2, X } from 'lucide-react'
+import { Maximize2, Minimize2, Minus, X } from 'lucide-react'
 
 interface Props { visible:boolean; gameCode:string|null; isGenerating:boolean; agentCount:number; doneCount:number; onClose:()=>void }
 
 export function GamePanel({ visible, gameCode, isGenerating, agentCount, doneCount, onClose }: Props) {
   const [isFullscreen, setFullscreen] = useState(false)
+  const [minimized, setMinimized] = useState(false)
+
   if (!visible && !isGenerating) return null
   const progress = agentCount>0 ? (doneCount/agentCount)*100 : 0
 
-  const panelStyle = (isFullscreen:boolean) => ({
+  // Minimized: show a small floating pill
+  if (minimized && visible) {
+    return (
+      <div className="absolute z-50 left-1/2 -translate-x-1/2 pointer-events-auto"
+        style={{ top:'58%' }}>
+        <button onClick={() => setMinimized(false)}
+          className="flex items-center gap-2 px-4 py-2 bg-black/40 backdrop-blur-xl border border-lime-400/20 rounded-full text-lime-400/70 hover:text-lime-300 hover:border-lime-400/40 transition-all text-xs shadow-lg">
+          <div className="w-2 h-2 rounded-full bg-lime-400 animate-pulse" />
+          游戏已就绪
+        </button>
+      </div>
+    )
+  }
+
+  const panelStyle = (full:boolean) => ({
     position: 'absolute' as const, left:'50%', zIndex:50,
-    width: isFullscreen ? '100vw' : 'min(560px, 55vw)',
-    height: isFullscreen ? '100vh' : 'auto',
-    aspectRatio: isFullscreen ? undefined : '16/9',
-    top: isFullscreen ? 0 : '56%',
-    transform: isFullscreen ? 'translate(-50%,0)' : 'translate(-50%,-50%)',
-    borderRadius: isFullscreen ? 0 : 20,
-    background: isFullscreen ? 'rgba(0,0,0,0.95)'
-      : visible ? 'rgba(0,0,0,0.55)'          // 游戏渲染：实一点
-      : 'rgba(0,0,0,0.12)',                     // 生成中：极透液态玻璃
-    backdropFilter: isFullscreen ? 'none'
-      : visible ? 'blur(18px)'
-      : 'blur(6px)',
-    WebkitBackdropFilter: isFullscreen ? 'none'
-      : visible ? 'blur(18px)'
-      : 'blur(6px)',
+    width: full ? '100vw' : 'min(560px, 55vw)',
+    height: full ? '100vh' : 'auto',
+    aspectRatio: full ? undefined : '16/9',
+    top: full ? 0 : '56%',
+    transform: full ? 'translate(-50%,0)' : 'translate(-50%,-50%)',
+    borderRadius: full ? 0 : 20,
+    background: full ? 'rgba(0,0,0,0.95)'
+      : visible ? 'rgba(0,0,0,0.55)'
+      : 'rgba(0,0,0,0.12)',
+    backdropFilter: full ? 'none' : visible ? 'blur(18px)' : 'blur(6px)',
+    WebkitBackdropFilter: full ? 'none' : visible ? 'blur(18px)' : 'blur(6px)',
     border: visible ? '1px solid rgba(52,211,153,0.3)'
       : isGenerating ? '1px solid rgba(255,255,255,0.1)'
       : '1px solid rgba(255,255,255,0.06)',
@@ -71,10 +83,15 @@ export function GamePanel({ visible, gameCode, isGenerating, agentCount, doneCou
       {/* Game iframe */}
       {visible && !isFullscreen && (<>
         <div className="absolute top-3 right-3 z-10 flex gap-1.5">
+          <button onClick={() => setMinimized(true)}
+            className="p-2 rounded-lg bg-white/[0.08] hover:bg-white/[0.18] text-white/50 hover:text-amber-400 transition-colors" title="最小化">
+            <Minus size={14}/></button>
           <button onClick={()=>setFullscreen(true)}
-            className="p-2 rounded-lg bg-white/[0.08] hover:bg-white/[0.18] text-white/50 hover:text-white/80 transition-colors" title="全屏"><Maximize2 size={14}/></button>
+            className="p-2 rounded-lg bg-white/[0.08] hover:bg-white/[0.18] text-white/50 hover:text-white/80 transition-colors" title="全屏">
+            <Maximize2 size={14}/></button>
           <button onClick={onClose}
-            className="p-2 rounded-lg bg-white/[0.08] hover:bg-red-500/20 text-white/50 hover:text-red-400 transition-colors" title="关闭"><X size={14}/></button>
+            className="p-2 rounded-lg bg-white/[0.08] hover:bg-red-500/20 text-white/50 hover:text-red-400 transition-colors" title="关闭">
+            <X size={14}/></button>
         </div>
         <iframe srcDoc={gameCode||''} sandbox="allow-scripts" title="生成游戏"
           className="w-full h-full border-none bg-black" style={{ borderRadius:16 }} />

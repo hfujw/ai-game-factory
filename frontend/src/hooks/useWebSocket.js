@@ -126,5 +126,18 @@ export function useWebSocket() {
     generatingRef.current = false
   }, [])
 
-  return { statuses, messages, gameCode, error, isGenerating, sendEvent, cancel }
+  const dismiss = useCallback(() => {
+    if (wsRef.current) {
+      wsRef.current.close()
+      wsRef.current = null
+    }
+    setIsGenerating(false)
+    generatingRef.current = false
+    setGameCode(null)
+    setError(null)
+    setStatuses({})
+    setMessages([])
+  }, [])
+
+  return { statuses, messages, gameCode, error, isGenerating, sendEvent, cancel, dismiss }
 }

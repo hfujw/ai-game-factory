@@ -1,98 +1,165 @@
-"""程序 Agent — 基于结构化契约生成 HTML 解谜游戏。
+"""程序 Agent — 从结构化 GameScript 生成有质感的 HTML 游戏。
 
-契约驱动：prompt 中规定了必须存在的 HTML id、JS 对象和状态机，
-审查 Agent 可以直接用正则验证这些结构要素是否存在，无需 LLM 猜测。
+升级要点：
+1. 视觉系统：预置 CSS 变量 + 组件类名，LLM 填空
+2. 谜题范式：cipher=符文破译台 / sequence=时间碎片 / logic=星图推演
+3. 游戏循环：张力曲线（裂纹递增 + 背景变暗 + 逐层提示）
+4. 历史真相：分层展示，石板碎裂动画
 """
 
+import json
 from app.graph.state import GameFactoryState
 from app.llm_client import chat, _strip_markdown_fence
 
-SYSTEM_PROMPT = """你是一个像素风 HTML 游戏开发者。你必须严格遵循下面的「游戏契约」生成代码。
+SYSTEM_PROMPT = """你是一个"时间工匠"——将历史事件转化为可交互的 HTML 解谜游戏。
 
-=== 游戏契约（必须全部满足） ===
+=== 视觉系统（严格使用这些 CSS 变量，不要自创颜色）===
+:root {
+  --bg-void: #0d0a08;
+  --bg-panel: rgba(20,16,12,0.92);
+  --text-ember: #e8ddd0;
+  --accent-flame: #e8702a;
+  --accent-life: #34d399;
+  --accent-ash: #5a4a3a;
+  --border-glow: rgba(232,112,42,0.15);
+}
+.screen { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--bg-void); transition:opacity 0.5s; }
+.panel { background:var(--bg-panel); border:1px solid var(--border-glow); border-radius:4px; padding:24px; max-width:520px; width:90%; }
+.rune { background:transparent; border:1px solid var(--accent-flame); color:var(--accent-flame); padding:12px 24px; transition:all .3s; cursor:pointer; font-family:'Courier New',monospace; }
+.rune:hover { box-shadow:0 0 16px rgba(232,112,42,0.3); transform:translateY(-2px); }
+.rune:disabled { opacity:0.3; cursor:not-allowed; transform:none; }
+.glyph { color:var(--accent-flame); }
+.glyph::before { content:'▸ '; }
 
-【HTML 结构契约】必须包含以下 id 的 div：
-- #screen-title  — 标题画面：游戏名<h1> + 像素装饰框 + 一句话故事 + "开始"按钮
-- #screen-howto  — 操作说明：2-3句话教玩家怎么玩 + "开始挑战"按钮
-- #screen-game   — 游戏主体：谜题交互区，玩家能点/输入/拖
-- #screen-result — 结果画面：胜利🎉/失败💀 + 台词 + "📜 历史真相"按钮 + "再来一次"按钮
-- #screen-history — 历史真相面板：默认隐藏，点按钮展开，显示史料
+=== 游戏循环（必须有张力曲线）===
+1. #screen-title：显示年份+地点+悬念句（opening_hook），一枚发光的"开始"runes
+2. #screen-howto：一句话操作说明 + "开始挑战"按钮
+3. #screen-game：谜题交互（按puzzle_type选择范式，见下方）
+4. 反馈系统：
+   - 每次错误 → 屏幕边框出现裂纹（box-shadow变化）
+   - 尝试剩余2次 → 背景变暗（body opacity过渡）
+   - 尝试剩余1次 → 自动显示hint[1]（中等提示）
+   - 最后1次失败 → 显示正确答案 + 进入结果
+5. #screen-result：胜利→石板裂开光芒动画；失败→暗红余烬
+6. #screen-history：分层展示history_facts（核心事实/关键细节/延伸思考），铭文风格
 
-【JS 状态机契约】必须包含：
-- const HISTORY_FACTS = [...]  — 史料数组，至少3条
-- const gameState = { phase: 'title', attempts: 0, maxAttempts: 3 }  — 状态对象
-- function showScreen(name)  — 切换画面：隐藏所有 screen-* div，只显示 name 对应的
-- function handleInput(action)  — 处理玩家输入的统一入口
+=== 谜题范式（根据puzzle.type三选一）===
 
-【谜题契约】按类型实现：
-- cipher：显示密文+解密线索 → 玩家输入明文 → 逐字检查 → 绿色=对/红色=错
-- sequence：4-6张打乱的事件卡片 → 玩家点击排列 → 点"提交"检查顺序
-- logic：3-4条线索 → 玩家从3-4个选项中选择 → 选错给提示 + 扣次数
+【cipher — 符文破译台】
+布局：中央密文大字(▓符号或乱码) → 下方A-Z字母盘(点击填入) → 凹槽行显示进度(已填=橙色) → "点燃符文"检查按钮
+交互：
+- 点击字母→填入当前空槽，该字母变暗不可再用
+- 检查逐位高亮：正确位=绿色脉冲，错误位=红色闪烁+重置
+- 每次提交后，石碑边缘box-shadow变化模拟裂纹
+- 3次错误后自动揭示答案
 
-【视觉契约】：
-- 字体 'Courier New' 或 'Press Start 2P'
-- 背景 #0a0a0a，主文字 #33ff33（终端绿）
-- 按钮：border: 3px solid #33ff33; box-shadow: 4px 4px 0 #0a0;
-- 失败/成功操作有颜色变化反馈（红/绿闪烁）
+【sequence — 时间碎片】
+布局：4-6个"碎片"卡片（不规则圆角+轻微旋转±2deg），可点击交换顺序 → "重组时间线"按钮
+交互：
+- 点击两个碎片→它们交换位置（transform动画）
+- 选中碎片微微浮起(scale 1.05+阴影)
+- 提交后：相邻正确碎片之间显示绿色连线；错误碎片泛红弹回
+- 全部正确→碎片拼合成完整卷轴（max-height展开）
 
-【交互契约】：
-- 支持鼠标点击 + 键盘 Enter
-- 最多 3 次尝试，显示剩余次数
-- 3 次失败后自动显示正确答案 + 历史真相
-- 胜利后必须显示"📜 历史真相"按钮，点击展开 HISTORY_FACTS
+【logic — 星图推演】
+布局：中央问题核心(发光圆点) → 周围线索节点(3-4个小圆点+连线) → 下方3-4个选项(罗盘式菱形)
+交互：
+- 点击线索节点→展开显示文字(翻卡动画)
+- 点击选项→从问题核心到该选项绘制光线(SVG stroke-dashoffset动画)
+- 错误→光线变红+断裂；正确→光线变绿
+- 每次错误自动显示一条hint
 
-【代码约束】：
+=== 代码约束 ===
 - 单文件 <!DOCTYPE html>，内嵌 <style> 和 <script>
-- 400行以内
+- 600 行以内（视觉和动画不能省）
 - 不依赖外部库
-- 直接输出代码，不要 markdown 代码块包裹"""
+- gameState 管理所有状态
+- history_facts 存为 HISTORY_FACTS 常量
+- showScreen(name) 函数切换画面
+- 所有屏幕 id：screen-title, screen-howto, screen-game, screen-result, screen-history
+- 直接输出代码，不要 markdown 包裹"""
 
 
 def coder_node(state: GameFactoryState) -> dict:
-    """基于剧本 + 谜题机制 → 按契约生成游戏代码。"""
+    """从结构化 GameScript 生成游戏。"""
     puzzle_type = state["puzzle_type"]
-    game_script = state["game_script"]
-    puzzle_design = state.get("puzzle_design", {})
+    script_data = state.get("script_data", {})
     review_feedback = state.get("review_feedback", "")
     search_results = state.get("search_results", [])
 
-    # 史料
-    history_items = []
-    for r in search_results[:3]:
-        title = r.get("title", "")
-        facts = r.get("key_facts", []) or [r.get("content", "")[:200]]
-        for f in facts:
-            history_items.append(f"{title}: {f}" if title else f)
+    # 如果 writer 给了结构化数据，用它；否则 fallback
+    if not script_data:
+        try:
+            script_data = json.loads(state.get("game_script", "{}"))
+        except (json.JSONDecodeError, TypeError):
+            script_data = {}
+
+    # 组装 prompt
+    event = script_data.get("event", state["user_input"])
+    year = script_data.get("year", "")
+    location = script_data.get("location", "")
+    opening = script_data.get("opening_hook", f"你能解开{event}的秘密吗？")
+    protagonist = script_data.get("protagonist", "")
+    core_conflict = script_data.get("core_conflict", "")
+
+    puzzle = script_data.get("puzzle", {})
+    hints = puzzle.get("hints", [])
+    hints_text = "\n".join(f"  L{h.get('level',1)}: {h.get('text','')}" for h in hints) if hints else "  L1: 仔细观察..."
+
+    items = puzzle.get("items_labels", [])
+    items_text = ", ".join(f'"{x}"' for x in items) if items else ""
+
+    facts = script_data.get("history_facts", [])
+    facts_text = "\n".join(f'  "{f}"' for f in facts) if facts else "（使用剧本中的历史信息）"
+
+    victory = script_data.get("victory_line", "你成功了！")
+    defeat = script_data.get("defeat_line", "再试一次。")
+
+    visual = script_data.get("visual", {})
+    mood = visual.get("mood", "像素复古")
+    atmosphere = script_data.get("atmosphere", mood)
 
     feedback_block = ""
     if review_feedback:
         feedback_block = f"""
-=== 🚨 上一版审查不通过，以下问题必须修复 ===
+=== 🚨 审查反馈（必须修复）===
 {review_feedback}
-=== 请重新生成，确保修复上述所有问题 ===
 """
 
-    prompt = f"""请严格按照契约生成「{puzzle_type}」类型的解谜游戏。
+    prompt = f"""请按契约生成「{puzzle_type}」类型的时间解谜游戏。
 
-【游戏剧本】
-{game_script}
+【叙事信息】
+事件：{event}（{year}）
+地点：{location}
+主角：{protagonist}
+冲突：{core_conflict}
+氛围：{atmosphere}
+开场悬念：{opening}
 
 【谜题参数】
 类型：{puzzle_type}
-机制：{puzzle_design.get('mechanic', '')}
-规则：{puzzle_design.get('rules', '')}
-通关条件：{puzzle_design.get('win_condition', '')}
+表皮：{puzzle.get('surface', '')}
+答案：{puzzle.get('answer', '')}
+元素数量：{puzzle.get('items_count', len(items))}
+元素标签：{items_text}
+最大尝试：{puzzle.get('max_attempts', 3)}
 
-【史料（填入 HISTORY_FACTS 数组）】
-{chr(10).join(f"- {h}" for h in history_items) if history_items else '（使用剧本中的历史信息）'}
+【提示层级】
+{hints_text}
+
+【历史真相】
+{facts_text}
+
+【台词】
+通关：{victory}
+失败：{defeat}
 
 {feedback_block}
-直接输出完整 HTML，不要加解释。"""
+直接输出完整 HTML。"""
 
     try:
         code = chat(prompt, system=SYSTEM_PROMPT, temperature=0.3)
         code = _strip_markdown_fence(code)
-
         if not code.lower().startswith("<!doctype"):
             code = f"<!DOCTYPE html>\n{code}"
 
@@ -104,10 +171,9 @@ def coder_node(state: GameFactoryState) -> dict:
         fallback = f"""<!DOCTYPE html>
 <html lang="zh">
 <head><meta charset="UTF-8"><title>生成失败</title></head>
-<body style="background:#0a0a0a;color:#ff4444;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh;">
-<div style="text-align:center">
-<h1>游戏代码生成失败</h1><p>{str(e)}</p><p>请重试或换个历史事件</p>
-</div></body></html>"""
+<body style="background:#0d0a08;color:#e8ddd0;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
+<div style="text-align:center"><h1 style="color:#e8702a">生成失败</h1><p>{str(e)}</p></div>
+</body></html>"""
         return {
             "game_code": fallback,
             "agent_logs": [{"agent": "coder", "action": "error", "detail": str(e)}],

@@ -22,7 +22,7 @@ const AGENTS = [
 ]
 
 export default function App() {
-  const { statuses, messages, gameCode, error, isGenerating, sendEvent, cancel } = useWebSocket()
+  const { statuses, messages, gameCode, error, isGenerating, sendEvent, cancel, dismiss } = useWebSocket()
 
   // ── 光标聚光灯（同 lithos-replica）──
   const mouse  = useRef({ x:-999, y:-999 })
@@ -94,7 +94,7 @@ export default function App() {
             isGenerating={isGenerating}
             agentCount={AGENTS.length}
             doneCount={completedAgents}
-            onClose={cancel}
+            onClose={dismiss}
           />
 
           {/* z-100: 失败提示 */}
@@ -103,7 +103,7 @@ export default function App() {
             reason={error?.reason||''}
             suggestions={error?.suggestions||[]}
             onRetry={sendEvent}
-            onDismiss={cancel}
+            onDismiss={dismiss}
           />
 
           {/* z-100: 决策轨迹 */}
