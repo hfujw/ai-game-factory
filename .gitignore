@@ -9,3 +9,7 @@ dist/
 .vite/
 frontend/public/bg.mp4
 .playwright-mcp/
+*.png
+lithos-replica/
+frontend-demo/
+frontend-demo-v2/
