@@ -359,6 +359,23 @@ body {
 .search-btn:active:not(:disabled) { transform: scale(0.97); }
 .search-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
+.cancel-btn {
+  padding: 13px 20px;
+  font-family: var(--font-system);
+  font-size: 14px; font-weight: 500;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.7);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 100px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cancel-btn:hover {
+  background: rgba(255,55,95,0.15);
+  border-color: rgba(255,55,95,0.4);
+  color: #FF375F;
+}
+
 /* Event chips */
 .event-chips {
   display: flex; flex-wrap: wrap; gap: var(--sp-sm);
@@ -368,6 +385,7 @@ body {
 }
 .chip {
   padding: 7px 16px; font-size: 13px; font-weight: 500;
+  font-family: var(--font-system);
   color: rgba(255,255,255,0.55);
   background: rgba(255,255,255,0.05);
   backdrop-filter: blur(6px) saturate(110%);
@@ -377,12 +395,13 @@ body {
   transition: all 0.2s var(--spring);
   text-shadow: 0 0.5px 0.5px rgba(255,255,255,0.3);
 }
-.chip:hover {
+.chip:hover:not(:disabled) {
   background: rgba(255,255,255,0.15);
   color: rgba(255,255,255,0.92);
   transform: translateY(-1px);
   box-shadow: 0 4px 16px rgba(0,0,0,0.06);
 }
+.chip:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* === Game Section — glass-card === */
 .game-section {
@@ -467,12 +486,17 @@ body {
 }
 .event-log-header {
   display: flex; justify-content: space-between; align-items: center;
+  width: 100%;
   padding: var(--sp-md) var(--sp-lg);
   cursor: pointer; user-select: none; flex-shrink: 0;
   background: rgba(255,255,255,0.08);
   backdrop-filter: blur(12px) saturate(140%);
   -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border: none;
   border-bottom: 0.5px solid rgba(255,255,255,0.15);
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
 }
 .event-log-header h3 {
   font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.4);
@@ -565,6 +589,29 @@ body {
   .pipeline-list { grid-template-columns: repeat(2, 1fr); }
   .game-frame, .game-empty { min-height: 340px; }
 }
+/* ============================================
+   ACCESSIBILITY: focus-visible
+   ============================================ */
+*:focus-visible {
+  outline: 2px solid var(--accent, #FF2D8B);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.search-btn:focus-visible {
+  outline-color: #FFF;
+  outline-offset: 3px;
+}
+.chip:focus-visible,
+.event-log-header:focus-visible {
+  outline-offset: 1px;
+}
+
+/* Video fallback */
+@media (max-width: 768px) {
+  .bg-video { display: none; }
+  body { background: #0A0A0F; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,*::before,*::after { animation-duration:0.01ms!important; transition-duration:0.01ms!important; }
 }

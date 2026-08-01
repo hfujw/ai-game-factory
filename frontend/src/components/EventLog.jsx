@@ -13,7 +13,12 @@ export default function EventLog({ messages }) {
 
   return (
     <section className="event-log glass-card-light">
-      <div className="event-log-header" onClick={() => setIsOpen(!isOpen)}>
+      <button
+        className="event-log-header"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-controls="event-log-body"
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <h3>决策轨迹</h3>
           {messages.length > 0 && (
@@ -25,9 +30,9 @@ export default function EventLog({ messages }) {
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </span>
-      </div>
+      </button>
       {isOpen && (
-        <div className="event-log-body" ref={bodyRef}>
+        <div className="event-log-body" id="event-log-body" ref={bodyRef}>
           {messages.length === 0 ? (
             <div className="log-entry" style={{ justifyContent: 'center', padding: '16px 0' }}>
               <span className="detail" style={{ color: 'var(--text-muted)' }}>等待 Agent 开始工作…</span>

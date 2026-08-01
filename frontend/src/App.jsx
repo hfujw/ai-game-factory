@@ -6,7 +6,7 @@ import FailureNotice from './components/FailureNotice'
 import EventLog from './components/EventLog'
 
 export default function App() {
-  const { statuses, messages, gameCode, error, isGenerating, sendEvent } = useWebSocket()
+  const { statuses, messages, gameCode, error, isGenerating, sendEvent, cancel } = useWebSocket()
 
   return (
     <div className="app-container">
@@ -29,7 +29,7 @@ export default function App() {
 
       {/* Main: Search + Game */}
       <main className="main-content">
-        <SearchBar onGenerate={sendEvent} isGenerating={isGenerating} />
+        <SearchBar onGenerate={sendEvent} isGenerating={isGenerating} onCancel={cancel} />
         <FailureNotice error={error} onRetry={sendEvent} />
         <GameFrame gameCode={gameCode} />
       </main>

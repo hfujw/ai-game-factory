@@ -14,6 +14,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from app.graph.state import initial_state
 from app.graph.workflow import build_workflow
+from app.llm_client import get_cost_summary, reset_cost
 from app.ws_manager import ws_manager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
@@ -33,10 +34,7 @@ app.add_middleware(
 # 编译 LangGraph 工作流（启动时执行一次）
 workflow = build_workflow()
 
-# 加载知识库事件列表
-_KB_PATH = os.path.join(os.path.dirname(__file__), "knowledge", "verified_events.json")
-with open(_KB_PATH, "r", encoding="utf-8") as f:
-    _KB_EVENTS = json.load(f)
+from app.knowledge.kb import get_all_events
 
 
 @app.get("/api/health")
@@ -44,15 +42,22 @@ async def health():
     return {"status": "ok", "service": "AI 游戏工坊"}
 
 
+@app.get("/api/cost")
+async def get_cost():
+    """返回 LLM 调用花费统计。"""
+    return get_cost_summary()
+
+
 @app.get("/api/events")
 async def list_events():
     """返回知识库事件列表——前端用做推荐chips。"""
+    events = get_all_events()
     return {
         "events": [
             {"name": e["event"], "keywords": e.get("keywords", [])[:3]}
-            for e in _KB_EVENTS
+            for e in events
         ],
-        "total": len(_KB_EVENTS),
+        "total": len(events),
     }
 
 
@@ -156,6 +161,10 @@ async def generate_game(websocket: WebSocket):
         # 如果没有通过事件拿到最终状态，直接 run
         if final_state is None:
             final_state = await asyncio.to_thread(workflow.invoke, state)
+
+        # 推送花费
+        cost = get_cost_summary()
+        logger.info(f"生成完成，本次花费: ¥{cost['estimated_cost_rmb']} ({cost['calls']}次LLM调用)")
 
         # 推送结果
         if final_state.get("status") == "success":

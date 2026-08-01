@@ -25,6 +25,30 @@ client = OpenAI(
 
 DEFAULT_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
 
+# 全局花费追踪
+_cost_records: list[dict] = []
+
+
+def get_cost_summary() -> dict:
+    """返回累计花费统计。"""
+    total_input = sum(r["input_tokens"] for r in _cost_records)
+    total_output = sum(r["output_tokens"] for r in _cost_records)
+    # DeepSeek V4-Pro: ¥3/M input, ¥6/M output
+    cost_input = total_input / 1_000_000 * 3
+    cost_output = total_output / 1_000_000 * 6
+    return {
+        "calls": len(_cost_records),
+        "total_input_tokens": total_input,
+        "total_output_tokens": total_output,
+        "estimated_cost_rmb": round(cost_input + cost_output, 4),
+        "records": _cost_records[-20:],  # 最近20条
+    }
+
+
+def reset_cost():
+    """重置花费计数器。"""
+    _cost_records.clear()
+
 
 def _strip_markdown_fence(text: str) -> str:
     """清洗 LLM 可能包裹的 markdown 代码块。所有 Agent 共用。"""
@@ -68,11 +92,17 @@ def chat(prompt: str, system: str = "", model: str = None, temperature: float = 
                 logger.warning("LLM returned None content (finish_reason may be 'length'), retrying...")
                 continue
 
-            # 打印 token 使用统计
+            # 记录 token 使用
             usage = response.usage
             if usage:
-                logger.info("LLM tokens: prompt=%d completion=%d total=%d",
-                            usage.prompt_tokens, usage.completion_tokens, usage.total_tokens)
+                _cost_records.append({
+                    "input_tokens": usage.prompt_tokens,
+                    "output_tokens": usage.completion_tokens,
+                    "model": model or DEFAULT_MODEL,
+                })
+                logger.info("LLM tokens: in=%d out=%d total=%d | 累计¥%.4f",
+                            usage.prompt_tokens, usage.completion_tokens,
+                            usage.total_tokens, get_cost_summary()["estimated_cost_rmb"])
 
             return content
 

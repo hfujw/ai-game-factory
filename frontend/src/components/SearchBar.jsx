@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react'
 
-export default function SearchBar({ onGenerate, isGenerating }) {
+export default function SearchBar({ onGenerate, isGenerating, onCancel }) {
   const [input, setInput] = useState('')
   const [events, setEvents] = useState([])
+  const [eventsLoading, setEventsLoading] = useState(true)
 
   useEffect(() => {
     fetch('/api/events')
       .then(r => r.json())
       .then(d => setEvents(d.events || []))
       .catch(() => {})
+      .finally(() => setEventsLoading(false))
   }, [])
 
   const handleSubmit = (e) => {
@@ -46,17 +48,30 @@ export default function SearchBar({ onGenerate, isGenerating }) {
         >
           {isGenerating ? '生成中…' : '⚡ 生成游戏'}
         </button>
+        {isGenerating && onCancel && (
+          <button type="button" className="cancel-btn" onClick={onCancel}>
+            取消
+          </button>
+        )}
       </form>
       <div className="event-chips">
-        {events.slice(0, 5).map((e) => (
-          <span
-            key={e.name}
-            className="chip"
-            onClick={() => handleChipClick(e.name)}
-          >
-            {e.name.length > 28 ? e.name.slice(0, 28) + '…' : e.name}
-          </span>
-        ))}
+        {eventsLoading ? (
+          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>加载推荐事件…</span>
+        ) : events.length === 0 ? (
+          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>无法加载推荐事件</span>
+        ) : (
+          events.slice(0, 5).map((e) => (
+            <button
+              key={e.name}
+              className="chip"
+              onClick={() => handleChipClick(e.name)}
+              disabled={isGenerating}
+              aria-label={`生成: ${e.name}`}
+            >
+              {e.name.length > 28 ? e.name.slice(0, 28) + '…' : e.name}
+            </button>
+          ))
+        )}
       </div>
     </section>
   )

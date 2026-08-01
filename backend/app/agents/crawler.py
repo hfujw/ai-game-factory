@@ -10,69 +10,9 @@
 """
 
 import json
-import os
 from app.graph.state import GameFactoryState
 from app.llm_client import chat_json, _strip_markdown_fence
-
-# 加载验证知识库
-_KB_PATH = os.path.join(os.path.dirname(__file__), "..", "knowledge", "verified_events.json")
-with open(_KB_PATH, "r", encoding="utf-8") as f:
-    VERIFIED_KNOWLEDGE_BASE = json.load(f)
-
-
-def _search_verified_kb(user_input: str) -> dict | None:
-    """在验证知识库中搜索。返回匹配的事件，或 None。
-
-    匹配策略：
-    1. 关键词匹配（keywords 字段）
-    2. 中文别名匹配（aliases 字段，支持"图灵"→"Turing"）
-    3. 事件名字串匹配
-    """
-    text_lower = user_input.lower()
-    best_match = None
-    best_score = 0
-
-    for event in VERIFIED_KNOWLEDGE_BASE:
-        score = 0
-        # 关键词匹配
-        for kw in event["keywords"]:
-            if kw.lower() in text_lower:
-                score += 1
-        # 别名匹配（中文名/俗称）——权重和关键词一样
-        for alias in event.get("aliases", []):
-            if alias.lower() in text_lower:
-                score += 1
-        # 事件名相似度（简单子串匹配）
-        event_lower = event["event"].lower()
-        user_words = text_lower.split()
-        for word in user_words:
-            if len(word) >= 3 and word in event_lower:
-                score += 0.5
-
-        if score > best_score:
-            best_score = score
-            best_match = event
-
-    if best_score >= 1:
-        return best_match
-    return None
-
-
-def _verified_to_search_results(event: dict) -> list[dict]:
-    """将验证库中的事件转为 search_results 格式。"""
-    facts = event["facts"]
-    return [{
-        "title": f"「{event['event']}」已验证史料",
-        "content": facts["story"] + "\n\n趣闻：" + facts.get("fun_fact", ""),
-        "confidence": "high",
-        "verified": True,
-        "source": "verified_knowledge_base",
-        "key_facts": [
-            f"时间：{facts.get('time', '')}",
-            f"地点：{facts.get('place', '')}",
-            f"人物：{'、'.join(facts.get('people', []))}",
-        ],
-    }]
+from app.knowledge.kb import get_event_by_keyword, event_to_search_results, get_event_names
 
 
 DEEPSEEK_RETRIEVAL_PROMPT = """你是一个计算机历史档案馆的研究员。用户给你一个计算机历史事件，
@@ -104,10 +44,10 @@ def crawler_node(state: GameFactoryState) -> dict:
     user_input = state["user_input"]
 
     # 第一步：查验证知识库
-    verified_event = _search_verified_kb(user_input)
+    verified_event = get_event_by_keyword(user_input)
 
     if verified_event:
-        sources = _verified_to_search_results(verified_event)
+        sources = event_to_search_results(verified_event)
         return {
             "search_results": sources,
             "material_score": 1.0,
@@ -135,7 +75,7 @@ def crawler_node(state: GameFactoryState) -> dict:
                 "material_score": 0.0,
                 "material_sufficient": False,
                 "error_message": f"关于「{user_input}」没有足够资料。试试更知名的计算机历史事件。",
-                "suggestions": [e["event"] for e in VERIFIED_KNOWLEDGE_BASE[:5]],
+                "suggestions": get_event_names()[:5],
                 "status": "failed",
                 "agent_logs": [{"agent": "crawler", "action": "insufficient", "detail": "not found in KB or LLM"}],
             }
@@ -164,7 +104,7 @@ def crawler_node(state: GameFactoryState) -> dict:
             "material_score": 0.0,
             "material_sufficient": False,
             "error_message": f"知识检索失败: {str(e)}",
-            "suggestions": [e["event"] for e in VERIFIED_KNOWLEDGE_BASE[:5]],
+            "suggestions": get_event_names()[:5],
             "status": "failed",
             "agent_logs": [{"agent": "crawler", "action": "error", "detail": str(e)}],
         }

@@ -20,6 +20,7 @@ from app.agents.writer import writer_node
 from app.agents.coder import coder_node
 from app.agents.reviewer import reviewer_node
 from app.agents.artist import artist_node
+from app.config import MAX_REVIEW_RETRIES
 
 
 def should_continue_after_crawler(state: GameFactoryState) -> str:
@@ -40,7 +41,7 @@ def should_continue_after_reviewer(state: GameFactoryState) -> str:
     """审查之后——通过了吗？要重试吗？"""
     if state["review_passed"]:
         return "artist"
-    if state["retry_count"] < 3:
+    if state["retry_count"] < MAX_REVIEW_RETRIES:
         return "coder"  # 回退重试
     return "end_failed"
 

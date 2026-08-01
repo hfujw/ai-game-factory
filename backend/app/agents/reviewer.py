@@ -15,14 +15,11 @@ Phase 2（LLM 质量审查，仅在 Phase 1 通过后执行）：
 """
 
 import json
-import os
 import re
 from app.graph.state import GameFactoryState
 from app.llm_client import chat_json, _strip_markdown_fence
-
-_KB_PATH = os.path.join(os.path.dirname(__file__), "..", "knowledge", "verified_events.json")
-with open(_KB_PATH, "r", encoding="utf-8") as _f:
-    _KB_EVENTS = json.load(_f)
+from app.config import MAX_REVIEW_RETRIES
+from app.knowledge.kb import get_event_names
 
 # === Phase 1: 机械契约检查 ===
 
@@ -103,9 +100,9 @@ def reviewer_node(state: GameFactoryState) -> dict:
             }],
         }
 
-        if retry_count >= 3:
+        if retry_count >= MAX_REVIEW_RETRIES:
             result["error_message"] = f"游戏代码经过 {retry_count} 次修改仍未通过契约检查。"
-            result["suggestions"] = [e["event"] for e in _KB_EVENTS[:4]]
+            result["suggestions"] = get_event_names()[:4]
             result["status"] = "failed"
 
         return result
@@ -129,7 +126,7 @@ def reviewer_node(state: GameFactoryState) -> dict:
 【完整游戏代码】
 {game_code}
 
-当前重试: {retry_count}/3。结构检查已通过，请审查可玩性+历史+体验。返回 JSON。"""
+当前重试: {retry_count}/{MAX_REVIEW_RETRIES}。结构检查已通过，请审查可玩性+历史+体验。返回 JSON。"""
 
     try:
         # 用 chat_json 获取结构化结果
@@ -159,7 +156,7 @@ def reviewer_node(state: GameFactoryState) -> dict:
 
     if not passed and retry_count >= 3:
         ret["error_message"] = f"游戏代码经过 {retry_count} 次修改仍未通过质量审查。"
-        ret["suggestions"] = [e["event"] for e in _KB_EVENTS[:4]]
+        ret["suggestions"] = get_event_names()[:4]
         ret["status"] = "failed"
 
     return ret
