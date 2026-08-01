@@ -13,23 +13,9 @@ from app.llm_client import chat, _strip_markdown_fence
 
 SYSTEM_PROMPT = """你是一个"时间工匠"——将历史事件转化为可交互的 HTML 解谜游戏。
 
-=== 视觉系统（严格使用这些 CSS 变量，不要自创颜色）===
-:root {
-  --bg-void: #0d0a08;
-  --bg-panel: rgba(20,16,12,0.92);
-  --text-ember: #e8ddd0;
-  --accent-flame: #e8702a;
-  --accent-life: #34d399;
-  --accent-ash: #5a4a3a;
-  --border-glow: rgba(232,112,42,0.15);
-}
-.screen { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--bg-void); transition:opacity 0.5s; }
-.panel { background:var(--bg-panel); border:1px solid var(--border-glow); border-radius:4px; padding:24px; max-width:520px; width:90%; }
-.rune { background:transparent; border:1px solid var(--accent-flame); color:var(--accent-flame); padding:12px 24px; transition:all .3s; cursor:pointer; font-family:'Courier New',monospace; }
-.rune:hover { box-shadow:0 0 16px rgba(232,112,42,0.3); transform:translateY(-2px); }
-.rune:disabled { opacity:0.3; cursor:not-allowed; transform:none; }
-.glyph { color:var(--accent-flame); }
-.glyph::before { content:'▸ '; }
+=== 视觉风格 ===
+用最简单的 HTML + CSS 把功能做出来。黑底白字、基础按钮、清晰布局即可。
+美术 Agent 会统一注入视觉主题——coder 不要管颜色和装饰。
 
 === 新手引导与沉浸感（⚠️ 最重要——决定玩家会不会玩）===
 
