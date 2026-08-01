@@ -87,10 +87,23 @@ def crawler_node(state: GameFactoryState) -> dict:
             s["source"] = "deepseek_knowledge"
 
         total_chars = sum(len(s.get("content", "")) for s in sources)
+        sufficient = len(sources) >= 1 and total_chars >= 100
+
+        if not sufficient:
+            return {
+                "search_results": [],
+                "material_score": 0.0,
+                "material_sufficient": False,
+                "error_message": f"关于「{user_input}」没有足够资料。试试更知名的计算机历史事件。",
+                "suggestions": get_event_names()[:5],
+                "status": "failed",
+                "agent_logs": [{"agent": "crawler", "action": "insufficient", "detail": "sources empty or too few chars"}],
+            }
+
         return {
             "search_results": sources,
-            "material_score": round(min(total_chars / 3000, 0.85), 2),  # 未验证，最高 0.85
-            "material_sufficient": len(sources) >= 1 and total_chars >= 100,
+            "material_score": round(min(total_chars / 3000, 0.85), 2),
+            "material_sufficient": True,
             "agent_logs": [{
                 "agent": "crawler",
                 "action": "retrieved_unverified",

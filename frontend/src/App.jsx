@@ -94,7 +94,7 @@ export default function App() {
             isGenerating={isGenerating}
             agentCount={AGENTS.length}
             doneCount={completedAgents}
-            onClose={() => {}}
+            onClose={cancel}
           />
 
           {/* z-100: 失败提示 */}
@@ -103,7 +103,7 @@ export default function App() {
             reason={error?.reason||''}
             suggestions={error?.suggestions||[]}
             onRetry={sendEvent}
-            onDismiss={()=>{}}
+            onDismiss={cancel}
           />
 
           {/* z-100: 决策轨迹 */}

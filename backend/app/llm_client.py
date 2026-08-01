@@ -6,8 +6,10 @@
 import os
 import logging
 import time
+from dotenv import load_dotenv
 from openai import OpenAI
 
+load_dotenv()
 logger = logging.getLogger(__name__)
 DEFAULT_TIMEOUT = 120  # 单次 LLM 调用最长等待秒数
 MAX_RETRIES = 2        # 429/5xx 自动重试次数

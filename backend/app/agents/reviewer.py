@@ -154,7 +154,7 @@ def reviewer_node(state: GameFactoryState) -> dict:
         }],
     }
 
-    if not passed and retry_count >= 3:
+    if not passed and retry_count >= MAX_REVIEW_RETRIES:
         ret["error_message"] = f"游戏代码经过 {retry_count} 次修改仍未通过质量审查。"
         ret["suggestions"] = get_event_names()[:4]
         ret["status"] = "failed"
