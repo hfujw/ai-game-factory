@@ -13,3 +13,8 @@ frontend/public/bg.mp4
 lithos-replica/
 frontend-demo/
 frontend-demo-v2/
+__pycache__/
+*.pyc
+backend/.env
+dist/
+.vite/
