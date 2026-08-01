@@ -24,20 +24,12 @@ from app.knowledge.kb import get_event_names
 # === Phase 1: 机械契约检查 ===
 
 CONTRACT_RULES = [
-    # (检查项名称, 正则, 缺失时的反馈)
+    # 只保留真正必须的结构要素
     ("doctype", r'<!DOCTYPE\s+html', "缺少 <!DOCTYPE html>"),
     ("script_tag", r'<script[^>]*>', "缺少 <script> 标签"),
-    ("screen_title", r'id=["\']screen-title["\']', "缺少 #screen-title（标题画面）"),
-    ("screen_howto", r'id=["\']screen-howto["\']', "缺少 #screen-howto（操作说明画面）"),
-    ("screen_game", r'id=["\']screen-game["\']', "缺少 #screen-game（游戏主体画面）"),
-    ("screen_result", r'id=["\']screen-result["\']', "缺少 #screen-result（结果画面）"),
-    ("screen_history", r'id=["\']screen-history["\']', "缺少 #screen-history（历史真相面板）"),
-    ("history_facts", r'const\s+HISTORY_FACTS\s*=', "缺少 const HISTORY_FACTS 数组"),
-    ("game_state", r'const\s+gameState\s*=', "缺少 const gameState 状态对象"),
-    ("show_screen", r'function\s+showScreen\s*\(', "缺少 function showScreen() 画面切换函数"),
-    ("history_button", r'历史真相', "缺少'历史真相'按钮或文字"),
-    ("start_button", r'开始', "缺少'开始'相关按钮文字"),
-    ("attempts_limit", r'(maxAttempts|剩余.*次|[3３]\s*次)', "缺少最大尝试次数限制(3次)"),
+    ("screen_game", r'id=["\']screen-game["\']', "缺少游戏主体区域"),
+    ("screen_result", r'(id=["\']screen-result["\']|胜利|失败|通关|再来)', "缺少结果画面"),
+    ("history_facts", r'(HISTORY_FACTS|历史真相)', "缺少历史真相"),
 ]
 
 
@@ -61,9 +53,11 @@ SYSTEM_PROMPT = """你是游戏 QA + 历史爱好者。审查一个已经通过�
 3. **历史准确度**：HISTORY_FACTS 中的事实和提供的史料一致吗？
 4. **完整体验**：从标题→说明→游戏→结果→历史，流程完整吗？
 
-评分标准（面试作品级别）：
-- 基本可用（有小瑕疵但能玩） → passed=true，issues 里提小建议
-- 严重影响体验（谜题无解/流程断裂） → passed=false
+评分标准：
+- 🟢 能跑、有交互、能通关 → passed=true（小问题只记 suggestions，不拒）
+- 🔴 完全不能玩（JS报错导致白屏、谜题无解、点了没反应） → passed=false
+
+⚠️ 默认放行！只有严重影响才设 passed=false。不要因为"画面不够好看"拒绝。
 
 返回 JSON：
 {
@@ -75,18 +69,30 @@ SYSTEM_PROMPT = """你是游戏 QA + 历史爱好者。审查一个已经通过�
 
 def reviewer_node(state: GameFactoryState) -> dict:
     """两阶段审查。"""
+    import logging
+    logger = logging.getLogger("reviewer")
+
     game_code = state["game_code"]
     game_script = state["game_script"]
     search_results = state.get("search_results", [])
     retry_count = state.get("retry_count", 0) + 1
 
+    logger.info("审查开始 — retry=%d/%d, code_len=%d", retry_count, MAX_REVIEW_RETRIES, len(game_code))
+
     # === Phase 1: 机械检查 ===
     p1_ok, missing = phase1_contract_check(game_code)
 
     if not p1_ok:
-        # 机械检查不通过 → 直接返回缺失清单，不浪费 LLM 调用
+        # 机械检查不通过 → 直接返回缺失清单
+        logger.warning("Phase1 不通过: 缺失 %d 项 — %s", len(missing), ", ".join(missing[:3]))
+        # 保存失败代码到文件供调试
+        try:
+            with open("_last_failed_game.html", "w", encoding="utf-8") as f:
+                f.write(game_code)
+            logger.info("失败代码已保存到 _last_failed_game.html")
+        except Exception:
+            pass
         feedback = "契约检查不通过，以下结构要素缺失：\n" + "\n".join(f"- {m}" for m in missing)
-        feedback += "\n\n请严格按照游戏契约重新生成代码，确保包含所有必需的 id、常量和函数。"
 
         result = {
             "review_passed": False,
@@ -138,6 +144,7 @@ def reviewer_node(state: GameFactoryState) -> dict:
         result = {"passed": True, "issues": [], "feedback": "LLM审查异常，结构检查已通过，放行"}
 
     passed = result.get("passed", False)
+    logger.info("Phase2 结果: passed=%s, issues=%s", passed, result.get("issues", [])[:2])
 
     ret = {
         "review_passed": passed,

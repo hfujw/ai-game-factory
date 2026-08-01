@@ -31,6 +31,29 @@ SYSTEM_PROMPT = """你是一个"时间工匠"——将历史事件转化为可�
 .glyph { color:var(--accent-flame); }
 .glyph::before { content:'▸ '; }
 
+=== 新手引导与沉浸感（⚠️ 最重要——决定玩家会不会玩）===
+
+【开场即入戏】
+- 标题画面不是"欢迎来到XX游戏"，而是把玩家直接扔进历史现场
+  例："1940年，布莱切利园。一封纳粹密电刚刚被截获。桌上的电报机还在滴答作响。"
+- opening_hook 要让人产生"我想知道后面发生了什么"的冲动
+
+【操作引导——让玩家无痛上手】
+- 永远不要让玩家"读说明书"。用以下方式替代：
+  1. 游戏开始时，第一个可交互元素自动高亮（发光脉冲），暗示"点这里"
+  2. 操作反馈即时且明显——点了什么，立刻有颜色/大小/位置变化
+  3. 第一轮尝试不扣次数，作为"试玩轮"——让玩家在安全环境里摸索
+  4. 关键操作旁边始终有一行小字提示（如"点击字母填入凹槽"），字号小而灰，不干扰但可读
+- 玩家卡住 10 秒后，自动浮现第一条 hint（用淡入动画，不要弹窗）
+
+【让谜题有意义——不只是"排顺序"】
+- 每个谜题必须回答一个问题："玩家为什么要做这件事？"
+- 把答案写进游戏的 narrative 里：
+  - cipher：不是"破译这段密码"，而是"这封密电里藏着德军明天的进攻坐标，破解它就能拯救一个城市"
+  - sequence：不是"排列事件顺序"，而是"拼凑出 Python 诞生的完整时间线，你才能理解为什么它叫 Python"
+  - logic：不是"选出正确答案"，而是"从三条矛盾的史料中推理出真相，揭穿一个被误传 30 年的计算机传说"
+- 通关后不只显示"胜利"，要告诉玩家"因为你的破译，盟军成功拦截了补给线，战争缩短了 2 年"——让玩家觉得自己做的事有意义
+
 === 游戏循环（必须有张力曲线）===
 1. #screen-title：显示年份+地点+悬念句（opening_hook），一枚发光的"开始"runes
 2. #screen-howto：一句话操作说明 + "开始挑战"按钮
@@ -78,6 +101,16 @@ SYSTEM_PROMPT = """你是一个"时间工匠"——将历史事件转化为可�
 - showScreen(name) 函数切换画面
 - 所有屏幕 id：screen-title, screen-howto, screen-game, screen-result, screen-history
 - 直接输出代码，不要 markdown 包裹"""
+
+
+def get_puzzle_meaning(puzzle_type: str, event: str, protagonist: str) -> str:
+    """为每种谜题类型生成'为什么这个谜题有意义'的叙事框架。"""
+    templates = {
+        "cipher": f"玩家扮演{protagonist or '密码破译员'}，截获了关于「{event}」的关键密文。破译它不是为了通关——而是因为密文背后藏着真实的历史转折。",
+        "sequence": f"关于「{event}」的时间线被打乱了。玩家需要拼凑出完整的历史顺序，才能理解这件事为什么以这种方式发生。",
+        "logic": f"关于「{event}」流传着几种矛盾的说法。玩家需要从史料线索中推理出真相，揭穿被误传的信息。",
+    }
+    return templates.get(puzzle_type, f"玩家通过解谜，亲身体验「{event}」中的关键历史时刻。")
 
 
 def coder_node(state: GameFactoryState) -> dict:
@@ -128,13 +161,21 @@ def coder_node(state: GameFactoryState) -> dict:
 
     prompt = f"""请按契约生成「{puzzle_type}」类型的时间解谜游戏。
 
-【叙事信息】
+⚠️ 最重要的设计原则：
+1. 让玩家第一秒就知道该做什么（高亮第一个可交互元素 + 小字提示 + 第一轮不扣次数）
+2. 让谜题有意义——玩家破译密码=拯救城市/拼凑时间线=理解历史/推理真相=揭穿传说
+3. 通关后告诉玩家"你的行动改变了什么"
+
+【叙事信息——造氛围用】
 事件：{event}（{year}）
 地点：{location}
 主角：{protagonist}
 冲突：{core_conflict}
 氛围：{atmosphere}
 开场悬念：{opening}
+
+【玩家动机——谜题的意义】
+{get_puzzle_meaning(puzzle_type, event, protagonist)}
 
 【谜题参数】
 类型：{puzzle_type}
@@ -147,8 +188,14 @@ def coder_node(state: GameFactoryState) -> dict:
 【提示层级】
 {hints_text}
 
-【历史真相】
-{facts_text}
+【历史真相（渲染为故事面板，不是列表）】
+标题：{facts.get('title', '') if isinstance(facts, dict) else ''}
+故事：{facts.get('story', '') if isinstance(facts, dict) else ''}
+核心收获：{facts.get('key_point', '') if isinstance(facts, dict) else ''}
+趣闻：{facts.get('fun_fact', '') if isinstance(facts, dict) else ''}
+{facts_text if not isinstance(facts, dict) else ''}
+
+⚠️ #screen-history 必须做成故事面板：先显示标题（大字），再显示故事正文（小字、行距大、像在读卷轴），底部标注核心收获和趣闻。不要用 <ul><li> 列表。用 <p> 段落 + 装饰符号（▸ 或 ◈）分隔。
 
 【台词】
 通关：{victory}

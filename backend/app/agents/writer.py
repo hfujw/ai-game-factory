@@ -38,11 +38,12 @@ SYSTEM_PROMPT = """你是一个历史教育像素游戏的编剧。
     "max_attempts": 3
   },
 
-  "history_facts": [
-    "核心事实1（一句话）",
-    "核心事实2（一句话）",
-    "延伸思考（一句话）"
-  ],
+  "history_facts": {
+    "title": "一段吸引人的小标题，如'一台机器如何改变战争走向'",
+    "story": "200-300字的历史小故事。用口语化、有画面感的语言讲述。包含具体的人物、场景、细节、趣闻。像朋友聊天一样，让人读完能随口讲给别人听。不要教科书腔。",
+    "key_point": "一句话核心收获——读者读完能记住的东西",
+    "fun_fact": "一条鲜为人知的趣闻"
+  },
 
   "victory_line": "像素风通关台词，简短有力",
   "defeat_line": "像素风失败鼓励台词，简短",
@@ -57,7 +58,7 @@ SYSTEM_PROMPT = """你是一个历史教育像素游戏的编剧。
 【铁律】
 - 必须输出合法 JSON，不要 markdown 包裹，不要注释
 - puzzle.hints 必须 3 条，level 1→2→3 从模糊到直接
-- history_facts 必须 3 条，第 3 条是延伸思考
+- history_facts.story 必须 200-300 字，口语化有画面感，像朋友聊天讲故事
 - victory_line 和 defeat_line 各不超过 20 字
 - 所有内容必须基于史料，不编造"""
 
@@ -134,7 +135,12 @@ def writer_node(state: GameFactoryState) -> dict:
                 ],
                 "max_attempts": 3,
             },
-            "history_facts": ["（史料解析失败，请使用剧本信息）"],
+            "history_facts": {
+                "title": "关于这个事件",
+                "story": "（史料解析失败，请使用剧本中的历史信息）",
+                "key_point": "每个技术突破背后都有一个有趣的故事。",
+                "fun_fact": "",
+            },
             "victory_line": "你成功了！",
             "defeat_line": "没关系，再试一次。",
             "visual": {"mood": "像素复古"},
