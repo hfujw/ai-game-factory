@@ -61,4 +61,8 @@ def event_to_search_results(event: dict) -> list[dict]:
             f"地点：{facts.get('place', '')}",
             f"人物：{'、'.join(facts.get('people', []))}",
         ],
+        # V4：直传给 writer / artist_pre
+        "atmosphere_tags": event.get("atmosphere_tags", []),
+        "key_props": event.get("key_props", []),
+        "visual_anchor": event.get("visual_anchor", ""),
     }]

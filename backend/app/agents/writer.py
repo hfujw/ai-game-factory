@@ -60,6 +60,9 @@ SYSTEM_PROMPT = """你是一个历史教育像素游戏的编剧。
 - puzzle.hints 必须 3 条，level 1→2→3 从模糊到直接
 - history_facts.story 必须 200-300 字，口语化有画面感，像朋友聊天讲故事
 - victory_line 和 defeat_line 各不超过 20 字
+- atmosphere 字段优先使用史料中提供的 atmosphere_tags
+- visual.decorations 优先使用史料中提供的 key_props
+- visual.mood 优先参考史料中提供的 visual_anchor
 - 所有内容必须基于史料，不编造"""
 
 
@@ -70,12 +73,34 @@ def writer_node(state: GameFactoryState) -> dict:
     puzzle_design = state.get("puzzle_design", {})
     search_results = state.get("search_results", [])
 
-    # 拼史料
-    sources_text = "\n".join(
-        f"- {r.get('title', '')}: " +
-        ("; ".join(r.get('key_facts', [])) if r.get('key_facts') else r.get('content', '')[:300])
-        for r in search_results[:3]
-    )
+    # 拼史料（story + 新字段）
+    parts = []
+    for r in search_results[:3]:
+        title = r.get('title', '')
+        story = r.get('content', '')
+        facts = r.get('key_facts', [])
+        block = f"【{title}】\n"
+        if story and len(story) > 50:
+            block += story
+        elif facts:
+            block += "; ".join(facts)
+        # V4: 附加美术/氛围数据
+        if r.get("atmosphere_tags"):
+            block += f"\n氛围标签：{'、'.join(r['atmosphere_tags'])}"
+        if r.get("key_props"):
+            block += f"\n关键道具：{'、'.join(r['key_props'])}"
+        if r.get("visual_anchor"):
+            block += f"\n视觉锚点：{r['visual_anchor']}"
+        parts.append(block)
+    sources_text = "\n\n".join(parts)
+
+    # 提取 KB 新增字段（如果有）
+    kb_extra = ""
+    for r in search_results[:1]:
+        if r.get("verified"):
+            kb_event = r  # 后面会从完整 KB 事件里拿到这些字段
+            # 实际上 search_results 不一定有这些字段，我们从 state 的 script_data 或直接传
+            break
 
     prompt = f"""历史事件：{user_input}
 谜题类型：{puzzle_type}
