@@ -137,7 +137,7 @@ def coder_node(state: GameFactoryState) -> dict:
 {json.dumps(puzzle_guide, ensure_ascii=False)}
 
 === 原始代码 ===
-{script_data.get('original_code', script_data.get('content', {}).get('original', ''))}
+{script_data.get('original_code', '') or (script_data.get('content', {}) or {}).get('original', '')}
 
 === 知识点 ===
 {json.dumps(script_data.get('annotations', []), ensure_ascii=False)}

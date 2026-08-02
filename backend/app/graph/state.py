@@ -23,6 +23,7 @@ class GameFactoryState(TypedDict):
 
     # === 文案 Agent 产出 ===
     game_script: str
+    script_data: dict           # writer 产出的结构化剧本，artist_pre/coder 消费
     script_keywords: List[str]
 
     # === 程序 Agent 产出 ===
@@ -57,6 +58,7 @@ def initial_state(user_input: str) -> GameFactoryState:
         material_score=0.0,
         material_sufficient=False,
         game_script="",
+        script_data={},
         script_keywords=[],
         game_code="",
         review_passed=False,
