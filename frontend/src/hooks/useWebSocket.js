@@ -13,8 +13,15 @@ export function useWebSocket() {
   const logIdRef = useRef(0)
   const generatingRef = useRef(false)  // 避免 stale closure
 
+  const lastSend = useRef(0)
+
   const sendEvent = useCallback((eventText) => {
     if (!eventText.trim()) return
+
+    // 防抖：1秒内不重复触发
+    const now = Date.now()
+    if (now - lastSend.current < 1000) return
+    lastSend.current = now
 
     // 关闭旧的 socket
     if (wsRef.current) {

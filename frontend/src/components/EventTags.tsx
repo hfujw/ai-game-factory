@@ -36,7 +36,7 @@ export function EventTags({ onSelect, disabled }: Props) {
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 mt-2 w-80 bg-black/75 backdrop-blur-2xl border border-white/[0.1] rounded-2xl overflow-hidden shadow-2xl max-h-[60vh] overflow-y-auto">
+        <div className="absolute top-full right-0 mt-2 w-80 bg-black/80 backdrop-blur-2xl border border-white/[0.12] rounded-2xl shadow-2xl overflow-y-auto" style={{maxHeight:'50vh'}}>
           {events.map((name, i) => (
             <button
               key={i}

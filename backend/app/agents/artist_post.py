@@ -104,5 +104,6 @@ def artist_post_node(state: dict) -> dict:
 
     return {
         "styled_code": styled,
+        "status": "success",
         "agent_logs": [agent_log("artist_post", "styled", f"{len(styled)} chars")]
     }

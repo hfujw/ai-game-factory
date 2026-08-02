@@ -83,10 +83,10 @@ async def generate_game(websocket: WebSocket):
         state = initial_state(user_input)
 
         # 运行 LangGraph 工作流
-        # 使用 astream_events 获取每个节点执行的事件
-        final_state = None
+        # astream_events 推送实时进度，同时累积输出为最终状态
         prev_node = None
         prev_node_output = {}
+        final_output = {}
 
         AGENT_NAMES = {
             "planner": "策划Agent", "crawler": "爬虫Agent", "writer": "文案Agent",
@@ -154,27 +154,23 @@ async def generate_game(websocket: WebSocket):
 
                     prev_node = node_name
                     prev_node_output = output
-
-                    # 保存最终状态
-                    if isinstance(output, dict) and "status" in output:
-                        final_state = output
-
-        # 如果没有通过事件拿到最终状态，直接 run
-        if final_state is None:
-            final_state = await asyncio.to_thread(workflow.invoke, state)
+                    # 累积所有输出为最终状态（后面的覆盖前面的同名字段）
+                    if isinstance(output, dict):
+                        final_output.update(output)
 
         # 推送花费
         cost = get_cost_summary()
         logger.info(f"生成完成，本次花费: ¥{cost['estimated_cost_rmb']} ({cost['calls']}次LLM调用)")
+        logger.info(f"final_output keys: {list(final_output.keys())} status={final_output.get('status')} styled_len={len(final_output.get('styled_code',''))}")
 
-        # 推送结果
-        if final_state.get("status") == "success":
-            await ws_manager.send_game_ready(session_id, final_state.get("styled_code", ""))
+        # 推送结果：用 astream_events 累积的 final_output
+        if final_output.get("status") == "success":
+            await ws_manager.send_game_ready(session_id, final_output.get("styled_code", ""))
         else:
             await ws_manager.send_failed(
                 session_id,
-                final_state.get("error_message", "生成失败"),
-                final_state.get("suggestions", []),
+                final_output.get("error_message", "生成失败"),
+                final_output.get("suggestions", []),
             )
 
     except WebSocketDisconnect:
