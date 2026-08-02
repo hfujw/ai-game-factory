@@ -109,7 +109,7 @@ def coder_node(state: GameFactoryState) -> dict:
     """从结构化 GameScript 生成游戏。"""
     puzzle_type = state["puzzle_type"]
     script_data = state.get("script_data", {})
-    visual_css = state.get("visual_css", "")
+    direction = state.get("selected_direction", {})
     review_feedback = state.get("review_feedback", "")
     search_results = state.get("search_results", [])
 
@@ -152,8 +152,19 @@ def coder_node(state: GameFactoryState) -> dict:
 {review_feedback}
 """
 
-    # 将 visual_css 注入 system prompt
-    system_prompt = SYSTEM_PROMPT.replace("{visual_css}", visual_css if visual_css else "（无，使用默认黑底白字）")
+    # 组装方向信息块
+    direction_block = ""
+    if direction:
+        direction_block = f"""
+=== 选定的视觉方向 ===
+名称：{direction.get('name', '默认')}
+色板：{', '.join(direction.get('palette', []))}
+UI风格：{direction.get('ui', '')}
+动画节奏：{direction.get('animation', '')}
+参考CSS：
+{direction.get('reference_css', '')}
+
+请基于上述视觉方向编写游戏。用色板的颜色，遵循UI风格和动画节奏。可以自由发挥，不必逐字复制参考CSS。"""
 
     prompt = f"""请按契约生成「{puzzle_type}」类型的时间解谜游戏。
 
@@ -201,7 +212,7 @@ def coder_node(state: GameFactoryState) -> dict:
 直接输出完整 HTML。"""
 
     try:
-        code = chat(prompt, system=system_prompt, temperature=0.3)
+        code = chat(prompt + direction_block, system=SYSTEM_PROMPT, temperature=0.3)
         code = _strip_markdown_fence(code)
         if not code.lower().startswith("<!doctype"):
             code = f"<!DOCTYPE html>\n{code}"

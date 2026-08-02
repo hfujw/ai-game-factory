@@ -35,8 +35,9 @@ class GameFactoryState(TypedDict):
     retry_count: int
 
     # === 美术 Agent 产出 ===
-    visual_css: str          # artist_pre 产出的 CSS 契约
-    styled_code: str         # artist_post 产出的最终 HTML
+    directions: list           # artist_pre 产出的 2 个视觉方向
+    selected_direction: dict   # 关键词匹配选定的方向
+    styled_code: str           # artist_post 产出的最终 HTML
 
     # === 元数据 ===
     status: str
@@ -62,7 +63,8 @@ def initial_state(user_input: str) -> GameFactoryState:
         review_feedback="",
         review_details={},
         retry_count=0,
-        visual_css="",
+        directions=[],
+        selected_direction={},
         styled_code="",
         status="running",
         error_message="",

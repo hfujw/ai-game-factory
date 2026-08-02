@@ -1,134 +1,108 @@
-"""artist_post Agent — 两步走：正则注入（必须成功）+ LLM 追加（可选，挂了不影响）。
+"""Artist Post-Processing Agent V4
 
-在 reviewer 之后运行。输入 coder 的 game_code + artist_pre 的 visual_css。
-输出最终 styled_code。
+两步走：
+1. 正则注入（强制，零风险）— CSS变量/screen transition/字体/CRT/氛围
+2. 可选 LLM 微调（追加模式，挂了不影响）— 只生成补充CSS，追加到</style>前
 """
 
 import re
-import logging
-from app.graph.state import GameFactoryState
-from app.llm_client import chat, _strip_markdown_fence
-
-logger = logging.getLogger("artist_post")
-
-# ── CRT 扫描线 + 氛围粒子（固定注入，不调 LLM）──
-POST_CSS = """
-/* === artist_post 增强层 === */
-.crt-lines{position:fixed;inset:0;pointer-events:none;z-index:9999;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);animation:crt-flicker .15s infinite}
-.particle{position:fixed;width:2px;height:2px;background:var(--accent-flame);border-radius:50%;opacity:.2;pointer-events:none;z-index:9998}
-.particle:nth-child(1){top:15%;left:10%;animation:float1 12s linear infinite}
-.particle:nth-child(2){top:60%;left:85%;animation:float2 14s linear infinite}
-.particle:nth-child(3){top:30%;left:70%;animation:float3 16s linear infinite}
-@keyframes float1{0%{transform:translate(0,0)}25%{transform:translate(30px,-20px)}50%{transform:translate(-10px,-40px)}75%{transform:translate(-25px,10px)}100%{transform:translate(0,0)}}
-@keyframes float2{0%{transform:translate(0,0)}25%{transform:translate(-25px,-15px)}50%{transform:translate(15px,-35px)}75%{transform:translate(20px,20px)}100%{transform:translate(0,0)}}
-@keyframes float3{0%{transform:translate(0,0)}25%{transform:translate(20px,25px)}50%{transform:translate(-30px,15px)}75%{transform:translate(10px,-20px)}100%{transform:translate(0,0)}}
-"""
-
-# ── LLM 追加用的 system prompt（只看 CSS 文本，看不到 HTML）──
-REFINE_PROMPT = """你是一个 CSS 动画专家。你会收到一份游戏已有的 CSS 代码。
-
-请生成一段**需要追加到 </style> 之前的 CSS**。要求：
-1. 补充 @keyframes 动画（通关光芒绽放、错误时边框裂纹、按钮悬浮粒子）
-2. 补充视觉微调（面板内边距、文字行高、输入框圆角）
-3. 不要重复定义已有选择器，只写新的或覆盖的
-4. 输出纯 CSS，不要 markdown 包裹，不要解释"""
+from app.llm_client import chat
 
 
-def _safe_inject(html: str, anchor: str, css: str) -> str:
-    """安全的 CSS 注入：在 anchor 之前插入，如果 anchor 不存在则追加到 </head> 前。"""
-    if anchor in html:
-        return html.replace(anchor, css + anchor, 1)
-    if "</head>" in html:
-        return html.replace("</head>", "<style>" + css + "</style>\n</head>", 1)
-    return html
-
-
-def _inject_font(html: str) -> str:
-    """注入 Press Start 2P 字体链接（如果尚未引入）。"""
-    if "fonts.googleapis.com" in html:
-        return html
-    font_link = '<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">'
-    return html.replace("</head>", font_link + "\n</head>", 1)
-
-
-def _inject_screen_transition(html: str) -> str:
-    """给 .screen 补 transition / .active 规则（如果缺失）。"""
-    if ".screen.active" in html or '.screen.active' in html:
-        return html  # coder 已经写了，不用注入
-
-    screen_css = ".screen{opacity:0;transform:scale(0.98);transition:opacity .5s cubic-bezier(0.16,1,0.3,1),transform .5s cubic-bezier(0.16,1,0.3,1);pointer-events:none}.screen.active{opacity:1;transform:scale(1);pointer-events:auto}"
-
+def inject_screen_transition(html: str) -> str:
+    screen_css = """
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;opacity:0;transform:scale(0.98);transition:opacity 0.5s cubic-bezier(0.16,1,0.3,1),transform 0.5s cubic-bezier(0.16,1,0.3,1);pointer-events:none}
+.screen.active{opacity:1;transform:scale(1);pointer-events:auto}
+    """
     if ".screen" in html:
-        # .screen 存在但缺 .active → 在 .screen { 块后面追加
-        html = re.sub(r'(\.screen\s*\{[^}]*\})', r'\1' + screen_css, html, count=1)
+        html = re.sub(
+            r'(\.screen\s*\{[^}]*)\}',
+            r'\1;opacity:0;transform:scale(0.98);transition:opacity 0.5s,transform 0.5s;pointer-events:none}',
+            html,
+            count=1
+        )
+        if ".screen.active" not in html:
+            html = html.replace("</style>", ".screen.active{opacity:1;transform:scale(1);pointer-events:auto}</style>")
     else:
-        html = _safe_inject(html, "</style>", screen_css)
+        html = html.replace("</style>", f"{screen_css}</style>")
     return html
 
 
-def _inject_particles(html: str) -> str:
-    """在 </body> 前添加 3 个氛围粒子 div（如果有 body 闭合标签）。"""
-    if "</body>" not in html:
-        return html
-    particles = '<div class="particle"></div><div class="particle"></div><div class="particle"></div>'
-    return html.replace("</body>", particles + "\n</body>", 1)
+def inject_fonts(html: str) -> str:
+    if "fonts.googleapis.com" not in html:
+        font_link = '<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">'
+        html = html.replace("</head>", f"{font_link}</head>")
+    return html
 
 
-def artist_post_node(state: GameFactoryState) -> dict:
-    """两步走：正则注入（必须）+ LLM 追加（可选）。"""
+def inject_atmosphere(html: str, direction: dict) -> str:
+    post = direction.get("post", {})
+    if post.get("crt") and "body::after" not in html:
+        crt = "body::after{content:"";position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:9999;}"
+        html = html.replace("</style>", f"{crt}</style>")
+    atmosphere = post.get("atmosphere", "")
+    if atmosphere and "artist_post_atmosphere" not in html:
+        html = html.replace("</style>", f"\n/* artist_post_atmosphere */\n{atmosphere}\n</style>")
+    return html
+
+
+def inject_palette_vars(html: str, direction: dict) -> str:
+    palette = direction.get("palette", [])
+    if len(palette) >= 5:
+        var_css = f":root{{--bg:{palette[0]};--primary:{palette[1]};--success:{palette[2]};--text:{palette[3]};--muted:{palette[4]}}}"
+        if "<style>" in html:
+            html = html.replace("<style>", f"<style>\n{var_css}\n")
+        else:
+            html = html.replace("</head>", f"<style>{var_css}</style></head>")
+    return html
+
+
+def llm_generate_supplement(existing_css: str, direction: dict) -> str:
+    prompt = f"""你是一位 CSS 氛围设计师。现有 CSS 如下：
+
+{existing_css[:2000]}
+
+请只输出"需要补充的 CSS"，包括：
+1. 更精细的 @keyframes 动画（通关光芒爆发、粒子飘散）
+2. 氛围粒子样式（.particle + 漂移动画）
+3. 任何能让视觉更生动的微调
+
+【要求】
+- 只输出纯 CSS，不要解释
+- 不要覆盖已有选择器，只补充新的
+- 如果已有类似动画，跳过
+- 总长度控制在 30 行以内"""
+    css = chat(prompt, temperature=0.2)
+    return css.replace("```css", "").replace("```", "").strip()
+
+
+def artist_post_node(state: dict) -> dict:
     game_code = state.get("game_code", "")
-    visual_css = state.get("visual_css", "")
+    direction = state.get("selected_direction", {})
 
-    if not game_code:
-        return {
-            "styled_code": game_code,
-            "status": "success",
-            "agent_logs": [{"agent": "artist_post", "action": "skip", "detail": "no game_code"}],
-        }
-
-    # ===== 第一步：正则注入（零风险，必须成功）=====
     styled = game_code
 
-    # 确保有 <style> 标签
-    if "<style>" not in styled:
-        if "</head>" in styled:
-            styled = styled.replace("</head>", "<style></style>\n</head>", 1)
-        else:
-            styled = "<style></style>\n" + styled
+    # Step 1: 正则注入（强制）
+    styled = inject_palette_vars(styled, direction)
+    styled = inject_screen_transition(styled)
+    styled = inject_fonts(styled)
+    styled = inject_atmosphere(styled, direction)
 
-    # 1. 注入 artist_pre 的 CSS 契约（放到 <style> 最前面）
-    if visual_css:
-        styled = _safe_inject(styled, "</style>", visual_css)
-
-    # 2. 注入字体
-    styled = _inject_font(styled)
-
-    # 3. 给 .screen 补 transition
-    styled = _inject_screen_transition(styled)
-
-    # 4. 注入 CRT 扫描线 + 氛围粒子 CSS
-    styled = _safe_inject(styled, "</style>", POST_CSS)
-
-    # 5. 注入 3 个粒子 div
-    styled = _inject_particles(styled)
-
-    # ===== 第二步：LLM 追加（可选，挂了不影响）=====
+    # Step 2: 可选 LLM 微调（追加模式）
     try:
-        # 只提取 <style> 内容给 LLM
-        style_match = re.search(r"<style>(.*?)</style>", styled, re.DOTALL)
+        style_match = re.search(r'<style>(.*?)</style>', styled, re.DOTALL)
         if style_match:
-            original = style_match.group(1)
-            llm_css = chat(original, system=REFINE_PROMPT, temperature=0.3)
-            llm_css = _strip_markdown_fence(llm_css)
-            if llm_css and len(llm_css) > 20:
-                # 追加到 </style> 之前，不替换原有 CSS
-                styled = _safe_inject(styled, "</style>", "\n/* === LLM 补充 === */\n" + llm_css + "\n")
-                logger.info("LLM 微调成功, %d chars", len(llm_css))
-    except Exception as e:
-        logger.warning("LLM 微调失败（正则注入结果已可用）: %s", e)
+            existing = style_match.group(1)
+            supplement = llm_generate_supplement(existing, direction)
+            if supplement:
+                styled = styled.replace(
+                    "</style>",
+                    f'\n/* === artist_post supplement === */\n{supplement}\n</style>'
+                )
+    except Exception:
+        pass
 
     return {
         "styled_code": styled,
-        "status": "success",
-        "agent_logs": [{"agent": "artist_post", "action": "styled", "detail": f"injected CSS + particles, final {len(styled)} chars"}],
+        "agent_logs": [{"agent": "artist_post", "action": "styled", "detail": f"{len(styled)} chars"}]
     }

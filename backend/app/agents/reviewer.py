@@ -23,23 +23,36 @@ from app.knowledge.kb import get_event_names
 
 # === Phase 1: 机械契约检查 ===
 
-CONTRACT_RULES = [
-    # 只保留真正必须的结构要素
+# Phase1 分级：CRITICAL=致命(跳过Phase2) / WARNING=警告(继续Phase2)
+CRITICAL_RULES = [
     ("doctype", r'<!DOCTYPE\s+html', "缺少 <!DOCTYPE html>"),
     ("script_tag", r'<script[^>]*>', "缺少 <script> 标签"),
     ("screen_game", r'id=["\']screen-game["\']', "缺少游戏主体区域"),
+    ("game_state", r'(const\s+gameState|let\s+gameState|var\s+gameState)', "缺少 gameState 状态对象"),
+]
+WARNING_RULES = [
     ("screen_result", r'(id=["\']screen-result["\']|胜利|失败|通关|再来)', "缺少结果画面"),
-    ("history_facts", r'(HISTORY_FACTS|历史真相)', "缺少历史真相"),
+    ("history", r'(HISTORY_FACTS|历史真相)', "缺少历史真相"),
 ]
 
 
-def phase1_contract_check(game_code: str) -> tuple[bool, list[str]]:
-    """机械正则检查。返回 (通过?, 缺失项列表)。"""
-    missing = []
-    for name, pattern, feedback in CONTRACT_RULES:
+def phase1_contract_check(game_code: str) -> dict:
+    """机械正则检查。返回 {level: CRITICAL|WARNING|PASS, missing: [...]}。"""
+    critical_missing = []
+    for name, pattern, feedback in CRITICAL_RULES:
         if not re.search(pattern, game_code, re.IGNORECASE):
-            missing.append(feedback)
-    return len(missing) == 0, missing
+            critical_missing.append(feedback)
+
+    warning_missing = []
+    for name, pattern, feedback in WARNING_RULES:
+        if not re.search(pattern, game_code, re.IGNORECASE):
+            warning_missing.append(feedback)
+
+    if critical_missing:
+        return {"level": "CRITICAL", "pass": False, "missing": critical_missing}
+    if warning_missing:
+        return {"level": "WARNING", "pass": False, "missing": warning_missing}
+    return {"level": "PASS", "pass": True, "missing": []}
 
 
 # === Phase 2: LLM 质量审查 ===
@@ -81,39 +94,43 @@ def reviewer_node(state: GameFactoryState) -> dict:
 
     logger.info("审查开始 — retry=%d/%d, code_len=%d", retry_count, MAX_REVIEW_RETRIES, len(game_code))
 
-    # === Phase 1: 机械检查 ===
-    p1_ok, missing = phase1_contract_check(game_code)
+    # === Phase 1: 机械检查（分级）===
+    p1 = phase1_contract_check(game_code)
 
-    if not p1_ok:
-        # 机械检查不通过 → 直接返回缺失清单
-        logger.warning("Phase1 不通过: 缺失 %d 项 — %s", len(missing), ", ".join(missing[:3]))
+    if not p1["pass"]:
+        logger.warning("Phase1 %s: 缺失 %d 项 — %s", p1["level"], len(p1["missing"]), ", ".join(p1["missing"][:3]))
+
         # 保存失败代码到文件供调试
         try:
             with open("_last_failed_game.html", "w", encoding="utf-8") as f:
                 f.write(game_code)
-            logger.info("失败代码已保存到 _last_failed_game.html")
         except Exception:
             pass
-        feedback = "契约检查不通过，以下结构要素缺失：\n" + "\n".join(f"- {m}" for m in missing)
 
-        result = {
-            "review_passed": False,
-            "review_feedback": feedback,
-            "review_details": {"phase": "mechanical", "missing": missing},
-            "retry_count": retry_count,
-            "agent_logs": [{
-                "agent": "reviewer",
-                "action": "mechanical_reject",
-                "detail": f"缺失 {len(missing)} 项: {', '.join(missing)}",
-            }],
-        }
+        # CRITICAL → 跳过 Phase2 LLM，直接打回
+        if p1["level"] == "CRITICAL":
+            feedback = "【致命结构错误——跳过 LLM 审查】\n" + "\n".join(f"- {m}" for m in p1["missing"])
+            result = {
+                "review_passed": False,
+                "review_feedback": feedback,
+                "review_details": {"phase": "mechanical_critical", "missing": p1["missing"]},
+                "retry_count": retry_count,
+                "agent_logs": [{"agent": "reviewer", "action": "mechanical_critical",
+                               "detail": f"CRITICAL 缺失 {len(p1['missing'])} 项, 跳过 Phase2"}],
+            }
+        # CRITICAL → 跳过 Phase2，直接返回
+        if p1["level"] == "CRITICAL":
+            if retry_count >= MAX_REVIEW_RETRIES:
+                result["error_message"] = f"游戏代码经过 {retry_count} 次修改仍有致命结构错误。"
+                result["suggestions"] = get_event_names()[:4]
+                result["status"] = "failed"
+            return result
 
-        if retry_count >= MAX_REVIEW_RETRIES:
-            result["error_message"] = f"游戏代码经过 {retry_count} 次修改仍未通过契约检查。"
-            result["suggestions"] = get_event_names()[:4]
-            result["status"] = "failed"
+        # WARNING → 记下警告文本，继续 Phase2
+        if p1["level"] == "WARNING":
+            warning_text = "【结构警告】\n" + "\n".join(f"- {m}" for m in p1["missing"])
 
-        return result
+    # === Phase 2: LLM 质量审查（仅在非 CRITICAL 时进入）===
 
     # === Phase 2: LLM 质量审查 ===
     # 史料
@@ -148,9 +165,14 @@ def reviewer_node(state: GameFactoryState) -> dict:
     passed = result.get("passed", False)
     logger.info("Phase2 结果: passed=%s, issues=%s", passed, result.get("issues", [])[:2])
 
+    # 合并 Phase1 WARNING（如果有）
+    p2_feedback = result.get("feedback", "")
+    if p1["level"] == "WARNING":
+        p2_feedback = warning_text + "\n\n" + p2_feedback
+
     ret = {
         "review_passed": passed,
-        "review_feedback": result.get("feedback", ""),
+        "review_feedback": p2_feedback,
         "review_details": {
             "phase": "quality",
             "issues": result.get("issues", []),
