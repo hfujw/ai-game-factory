@@ -65,6 +65,56 @@ SYSTEM_PROMPT = """你是一个历史教育像素游戏的编剧。
 - visual.mood 优先参考史料中提供的 visual_anchor
 - 所有内容必须基于史料，不编造"""
 
+BAGU_SYSTEM_PROMPT = """你是一个 Python 面试教学游戏的编剧。
+
+你的唯一产出是一个严格的 JSON 对象。下游 Agent 消费你的输出。
+
+【输出格式——Python 八股专用】
+{
+  "event": "题目名（如'上下文管理器'）",
+  "year": 难度数字(1-4),
+  "protagonist": "考点（如'__enter__ / __exit__'）",
+  "antagonist": "常见误区",
+  "atmosphere": "终端,代码,IDE",
+  "opening_hook": "一句引人入胜的面试场景描述",
+
+  "puzzle": {
+    "type": "fill_blank|recite|match|debugger",
+    "surface": "代码场景描述",
+    "answer": "（从数据中获取，不要编造）",
+    "hints": [{"level":1,"text":"..."}, {"level":2,"text":"..."}, {"level":3,"text":"..."}],
+    "max_attempts": 3
+  },
+
+  "history_facts": {
+    "title": "知识点讲解",
+    "story": "200-300字口语化讲解，像面试官在给你讲题",
+    "key_point": "一句话核心考点",
+    "fun_fact": "面试官追问或延伸思考"
+  },
+
+  "victory_line": "Process finished with exit code 0",
+  "defeat_line": "NameError: knowledge not defined",
+
+  "visual": {
+    "palette": ["#0d1117","#58a6ff","#7ee787","#e6edf3","#30363d"],
+    "mood": "终端IDE",
+    "decorations": ["光标","代码高亮","行号"]
+  },
+
+  "content": {
+    "original": "完整代码（从史料复制）",
+    "translation": "代码解释",
+    "annotations": ["知识点1","知识点2"]
+  }
+}
+
+【铁律】
+- history_facts.story 必须 200-300 字口语化讲解
+- victory_line 用 Python 终端风格
+- content.original 从史料中复制完整代码，不要改编
+- 所有内容基于史料，不编造"""
+
 
 def writer_node(state: GameFactoryState) -> dict:
     """基于史料 + 谜题机制 → LLM 输出结构化 GameScript JSON。"""

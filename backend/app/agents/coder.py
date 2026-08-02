@@ -10,6 +10,16 @@
 import json
 from app.graph.state import GameFactoryState
 from app.llm_client import agent_log, chat, _strip_markdown_fence
+from app.agents.coder_templates_bagu import (
+    FILL_BLANK_TEMPLATE, RECITE_TEMPLATE, MATCH_TEMPLATE, DEBUGGER_TEMPLATE
+)
+
+BAGU_TEMPLATES = {
+    "fill_blank": FILL_BLANK_TEMPLATE,
+    "recite": RECITE_TEMPLATE,
+    "match": MATCH_TEMPLATE,
+    "debugger": DEBUGGER_TEMPLATE,
+}
 
 SYSTEM_PROMPT = """你是一个"时间工匠"——将历史事件转化为可交互的 HTML 解谜游戏。
 
@@ -106,12 +116,33 @@ def get_puzzle_meaning(puzzle_type: str, event: str, protagonist: str) -> str:
 
 
 def coder_node(state: GameFactoryState) -> dict:
-    """从结构化 GameScript 生成游戏。"""
+    """从结构化 GameScript 生成游戏。支持计算机历史 + 八股两种模式。"""
     puzzle_type = state["puzzle_type"]
     script_data = state.get("script_data", {})
     direction = state.get("selected_direction", {})
     review_feedback = state.get("review_feedback", "")
     search_results = state.get("search_results", [])
+
+    # 八股类型 → 使用对应交互模板
+    is_bagu = puzzle_type in BAGU_TEMPLATES
+    if is_bagu:
+        # 从 search_results 中提取 puzzle_guide（KB 直传）
+        puzzle_guide = {}
+        for r in search_results:
+            if r.get("puzzle_guide"):
+                puzzle_guide = r["puzzle_guide"]
+                break
+        bagu_data_block = f"""
+=== Python 面试题数据（注入到 window.__PUZZLE_DATA__）===
+{json.dumps(puzzle_guide, ensure_ascii=False)}
+
+=== 原始代码 ===
+{script_data.get('original_code', script_data.get('content', {}).get('original', ''))}
+
+=== 知识点 ===
+{json.dumps(script_data.get('annotations', []), ensure_ascii=False)}
+"""
+        bagu_system = SYSTEM_PROMPT + "\n\n" + BAGU_TEMPLATES[puzzle_type]
 
     # 如果 writer 给了结构化数据，用它；否则 fallback
     if not script_data:
@@ -212,7 +243,9 @@ UI风格：{direction.get('ui', '')}
 直接输出完整 HTML。"""
 
     try:
-        code = chat(prompt + direction_block, system=SYSTEM_PROMPT, temperature=0.3)
+        final_prompt = prompt + direction_block + (bagu_data_block if is_bagu else "")
+        final_system = bagu_system if is_bagu else SYSTEM_PROMPT
+        code = chat(final_prompt, system=final_system, temperature=0.3)
         code = _strip_markdown_fence(code)
         if not code.lower().startswith("<!doctype"):
             code = f"<!DOCTYPE html>\n{code}"

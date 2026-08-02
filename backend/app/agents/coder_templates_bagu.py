@@ -1,7 +1,7 @@
 # ============================================================
 # DEBUGGER_TEMPLATE
 # ============================================================
-DEBUGGER_TEMPLATE = """"
+DEBUGGER_TEMPLATE = """
 你正在为一个 Python 面试学习游戏生成 HTML/CSS/JS 代码。
 
 【游戏类型】debugger（Bug 定位）
@@ -81,12 +81,12 @@ DEBUGGER_TEMPLATE = """"
 【校验逻辑】
 - 前端 JS 校验，不执行代码
 - 比对 selected_line === bug_line && selected_type === bug_type
-""""
+"""
 
 # ============================================================
 # MATCH_TEMPLATE
 # ============================================================
-MATCH_TEMPLATE = """"
+MATCH_TEMPLATE = """
 你正在为一个 Python 面试学习游戏生成 HTML/CSS/JS 代码。
 
 【游戏类型】match（概念配对）
@@ -137,12 +137,12 @@ MATCH_TEMPLATE = """"
     {"left": "@property", "right": "将方法转换为属性访问，实现描述符协议"},
     {"left": "__slots__", "right": "限制实例属性，节省内存，禁止 __dict__"}
   ]
-""""
+"""
 
 # ============================================================
 # FILL_BLANK_TEMPLATE
 # ============================================================
-FILL_BLANK_TEMPLATE = """"
+FILL_BLANK_TEMPLATE = """
 你正在为一个 Python 面试学习游戏生成 HTML/CSS/JS 代码。
 
 【游戏类型】fill_blank（代码填空）
@@ -187,12 +187,12 @@ FILL_BLANK_TEMPLATE = """"
 - 提供 initGame(data) 入口函数
 - data.blanks 结构：[{"code": "def ___(self):", "answer": "__enter__", "position": "方法名"}, ...]
 - data.expected_output: {error, warning, success}
-""""
+"""
 
 # ============================================================
 # RECITE_TEMPLATE
 # ============================================================
-RECITE_TEMPLATE = """"
+RECITE_TEMPLATE = """
 你正在为一个 Python 面试学习游戏生成 HTML/CSS/JS 代码。
 
 【游戏类型】recite（代码默写 — 剥洋葱式）
@@ -238,4 +238,4 @@ RECITE_TEMPLATE = """"
 - data.recite_config: {preserve_keywords, preserve_builtins, strip_pattern}
 - data.content.original: 完整代码
 - 前端 JS 自动生成骨架，不由后端预存
-""""
+"""
