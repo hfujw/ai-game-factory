@@ -3,7 +3,7 @@
 import hashlib
 import json
 import re
-from app.llm_client import chat
+from app.llm_client import chat, _strip_markdown_fence
 
 # 情绪同义词表
 MOOD_SYNONYMS = {
@@ -118,7 +118,7 @@ def artist_pre_node(state: dict) -> dict:
 
     try:
         response = chat(prompt, system=SYSTEM_PROMPT, temperature=0.5)
-        response = response.replace("```json", "").replace("```", "").strip()
+        response = _strip_markdown_fence(response)
         data = json.loads(response)
         directions = data.get("directions", [])
 

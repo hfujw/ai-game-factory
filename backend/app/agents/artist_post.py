@@ -6,7 +6,7 @@
 """
 
 import re
-from app.llm_client import chat
+from app.llm_client import chat, _strip_markdown_fence
 
 
 def inject_screen_transition(html: str) -> str:
@@ -73,7 +73,7 @@ def llm_generate_supplement(existing_css: str, direction: dict) -> str:
 - 如果已有类似动画，跳过
 - 总长度控制在 30 行以内"""
     css = chat(prompt, temperature=0.2)
-    return css.replace("```css", "").replace("```", "").strip()
+    return _strip_markdown_fence(css)
 
 
 def artist_post_node(state: dict) -> dict:

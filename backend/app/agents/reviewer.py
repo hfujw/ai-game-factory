@@ -118,8 +118,6 @@ def reviewer_node(state: GameFactoryState) -> dict:
                 "agent_logs": [{"agent": "reviewer", "action": "mechanical_critical",
                                "detail": f"CRITICAL 缺失 {len(p1['missing'])} 项, 跳过 Phase2"}],
             }
-        # CRITICAL → 跳过 Phase2，直接返回
-        if p1["level"] == "CRITICAL":
             if retry_count >= MAX_REVIEW_RETRIES:
                 result["error_message"] = f"游戏代码经过 {retry_count} 次修改仍有致命结构错误。"
                 result["suggestions"] = get_event_names()[:4]
@@ -132,7 +130,6 @@ def reviewer_node(state: GameFactoryState) -> dict:
 
     # === Phase 2: LLM 质量审查（仅在非 CRITICAL 时进入）===
 
-    # === Phase 2: LLM 质量审查 ===
     # 史料
     sources = "\n".join(
         f"- {r.get('title', '')}: {r.get('content', '')[:200]}"

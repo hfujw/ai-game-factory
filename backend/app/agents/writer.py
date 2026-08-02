@@ -5,7 +5,7 @@
 
 import json
 from app.graph.state import GameFactoryState
-from app.llm_client import chat
+from app.llm_client import chat, _strip_markdown_fence
 
 SYSTEM_PROMPT = """你是一个历史教育像素游戏的编剧。
 
@@ -94,14 +94,6 @@ def writer_node(state: GameFactoryState) -> dict:
         parts.append(block)
     sources_text = "\n\n".join(parts)
 
-    # 提取 KB 新增字段（如果有）
-    kb_extra = ""
-    for r in search_results[:1]:
-        if r.get("verified"):
-            kb_event = r  # 后面会从完整 KB 事件里拿到这些字段
-            # 实际上 search_results 不一定有这些字段，我们从 state 的 script_data 或直接传
-            break
-
     prompt = f"""历史事件：{user_input}
 谜题类型：{puzzle_type}
 谜题机制：{puzzle_design.get('mechanic', '')}
@@ -114,15 +106,7 @@ def writer_node(state: GameFactoryState) -> dict:
 
     try:
         raw = chat(prompt, system=SYSTEM_PROMPT, temperature=0.5)
-
-        # 清洗 markdown
-        cleaned = raw.strip()
-        for prefix in ["```json", "```"]:
-            if cleaned.startswith(prefix):
-                cleaned = cleaned[len(prefix):].strip()
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3].strip()
-
+        cleaned = _strip_markdown_fence(raw)
         script = json.loads(cleaned)
 
         # 确保必填字段存在
