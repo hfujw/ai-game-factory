@@ -91,6 +91,18 @@
         "Python 中 list/dict/set 是可变对象，int/str/tuple/float 是不可变对象",
         "不可变对象赋值会创建新对象，id() 会改变",
         "面试常考：is 和 == 的区别"
+      ],
+      "keywords": [
+        "可变对象",
+        "vs",
+        "不可变对象",
+        "可变对象 vs 不可变对象",
+        "fill_blank"
+      ],
+      "aliases": [
+        "可变对象",
+        "vs",
+        "不可变对象"
       ]
     },
     {
@@ -175,6 +187,18 @@
         "浅拷贝适用于一维列表，深拷贝适用于嵌套结构",
         "面试常考：自定义对象的深拷贝需要实现 __deepcopy__",
         "深拷贝有循环引用检测机制"
+      ],
+      "keywords": [
+        "深拷贝",
+        "vs",
+        "浅拷贝",
+        "深拷贝 vs 浅拷贝",
+        "match"
+      ],
+      "aliases": [
+        "深拷贝",
+        "vs",
+        "浅拷贝"
       ]
     },
     {
@@ -266,6 +290,20 @@
         "装饰器是 Python 面试必考点",
         "functools.wraps 用于保留原函数的 __name__ 和 __doc__",
         "类装饰器需要实现 __call__ 方法"
+      ],
+      "keywords": [
+        "装饰器",
+        "语法糖",
+        "decorator",
+        "@",
+        "wrapper",
+        "装饰器语法糖"
+      ],
+      "aliases": [
+        "装饰器",
+        "语法糖",
+        "decorator",
+        "@"
       ]
     },
     {
@@ -352,6 +390,20 @@
         "yield from 用于委托子生成器（Python 3.3+）",
         "生成器表达式 (x for x in range(10)) 比列表推导式更省内存",
         "面试常考：生成器 vs 迭代器 vs 可迭代对象的区别"
+      ],
+      "keywords": [
+        "生成器",
+        "yield",
+        "generator",
+        "迭代器",
+        "next",
+        "生成器与 yield"
+      ],
+      "aliases": [
+        "生成器",
+        "yield",
+        "generator",
+        "迭代器"
       ]
     },
     {
@@ -436,6 +488,16 @@
         "GIL 是 CPython 的特性，Jython 和 IronPython 没有 GIL",
         "Python 3.2+ 的 GIL 实现有改进，但本质未变",
         "面试常考：为什么 Python 多线程慢？怎么解决？"
+      ],
+      "keywords": [
+        "GIL",
+        "全局解释器锁",
+        "GIL 全局解释器锁",
+        "match"
+      ],
+      "aliases": [
+        "GIL",
+        "全局解释器锁"
       ]
     },
     {
@@ -527,6 +589,14 @@
         "with 语句等价于 try...finally 的语法糖",
         "contextlib 模块提供了 @contextmanager 装饰器简化实现",
         "面试常考：__exit__ 的三个参数是什么？"
+      ],
+      "keywords": [
+        "上下文管理器",
+        "上下文管理器",
+        "fill_blank"
+      ],
+      "aliases": [
+        "上下文管理器"
       ]
     },
     {
@@ -611,6 +681,20 @@
         "@property 是面试高频考点，考察封装思想",
         "描述符是 Python 属性访问的核心机制",
         "面试常考：@property 和 __getattr__ 的区别"
+      ],
+      "keywords": [
+        "描述符",
+        "property",
+        "getter",
+        "setter",
+        "descriptor",
+        "描述符与 @property"
+      ],
+      "aliases": [
+        "描述符",
+        "property",
+        "getter",
+        "setter"
       ]
     },
     {
@@ -706,6 +790,20 @@
         "这是 Python 最著名的'坑'之一，面试必考",
         "默认参数在定义时求值是 Python 的设计选择，不是 bug",
         "面试常考：如何修复？为什么不用 [] 而用 None？"
+      ],
+      "keywords": [
+        "默认参数",
+        "可变参数",
+        "陷阱",
+        "mutable",
+        "None",
+        "可变默认参数陷阱"
+      ],
+      "aliases": [
+        "默认参数",
+        "可变参数",
+        "陷阱",
+        "mutable"
       ]
     }
   ]
