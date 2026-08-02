@@ -123,6 +123,9 @@ def writer_node(state: GameFactoryState) -> dict:
     puzzle_design = state.get("puzzle_design", {})
     search_results = state.get("search_results", [])
 
+    # 检测是否为八股类型
+    is_bagu = puzzle_type in ("fill_blank", "recite", "match", "debugger")
+
     # 拼史料（story + 新字段）
     parts = []
     for r in search_results[:3]:
@@ -155,7 +158,8 @@ def writer_node(state: GameFactoryState) -> dict:
 请输出完整 GameScript JSON。puzzle.type 必须是 {puzzle_type}。"""
 
     try:
-        raw = chat(prompt, system=SYSTEM_PROMPT, temperature=0.5)
+        system = BAGU_SYSTEM_PROMPT if is_bagu else SYSTEM_PROMPT
+        raw = chat(prompt, system=system, temperature=0.5)
         cleaned = _strip_markdown_fence(raw)
         script = json.loads(cleaned)
 

@@ -45,9 +45,27 @@ SYSTEM_PROMPT = """你是一个游戏策划师，专门把计算机历史事件�
 
 
 def planner_node(state: GameFactoryState) -> dict:
-    """基于史料内容 → LLM 分析 → 选择谜题类型 + 设计机制。"""
+    """基于史料内容 → LLM 分析 → 选择谜题类型 + 设计机制。
+
+    如果 search_results 中已有 puzzle_guide（八股等预定义题型），直接使用，不调 LLM。
+    """
     user_input = state["user_input"]
     search_results = state.get("search_results", [])
+
+    # 八股/预定义题型：直接从 KB 数据中提取 puzzle_type，跳过 LLM
+    for r in search_results:
+        pg = r.get("puzzle_guide", {})
+        if pg and pg.get("type"):
+            return {
+                "puzzle_type": pg["type"],
+                "puzzle_design": {
+                    "mechanic": f"Python 面试 - {pg['type']}",
+                    "rules": "; ".join(pg.get("annotations", r.get("key_facts", [])))[:200],
+                    "win_condition": "所有空位填写正确" if pg["type"] == "fill_blank" else "代码通过校验",
+                },
+                "material_sufficient": True,
+                "agent_logs": [agent_log("planner", "predefined", f"type={pg['type']} from KB")],
+            }
 
     # 拼接史料文本（crawler 返回 content + key_facts，没有 snippet）
     sources_text = "\n\n".join(
