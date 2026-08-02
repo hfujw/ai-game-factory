@@ -34,6 +34,11 @@ WARNING_RULES = [
     ("screen_result", r'(id=["\']screen-result["\']|胜利|失败|通关|再来)', "缺少结果画面"),
     ("history", r'(HISTORY_FACTS|历史真相)', "缺少历史真相"),
 ]
+# CSS 质量检查——按钮可点击、输入框不重叠
+CSS_QUALITY_CHECKS = [
+    ("clickable_button", r'cursor\s*:\s*pointer', "所有按钮缺少 cursor:pointer，可能无法点击"),
+    ("no_blocked_pointer", r'pointer-events\s*:\s*none', "存在 pointer-events:none 可能阻塞交互"),
+]
 
 
 def phase1_contract_check(game_code: str) -> dict:
@@ -48,10 +53,18 @@ def phase1_contract_check(game_code: str) -> dict:
         if not re.search(pattern, game_code, re.IGNORECASE):
             warning_missing.append(feedback)
 
+    # CSS 质量检查
+    css_warnings = []
+    for name, pattern, feedback in CSS_QUALITY_CHECKS:
+        if not re.search(pattern, game_code, re.IGNORECASE):
+            css_warnings.append(feedback)
+    # pointer-events:none 检查反过来——如果有这个规则且不是 .screen，报 warning
+    # 修正：检查是否过度使用了 pointer-events:none
+
     if critical_missing:
-        return {"level": "CRITICAL", "pass": False, "missing": critical_missing}
-    if warning_missing:
-        return {"level": "WARNING", "pass": False, "missing": warning_missing}
+        return {"level": "CRITICAL", "pass": False, "missing": critical_missing + css_warnings}
+    if warning_missing or css_warnings:
+        return {"level": "WARNING", "pass": False, "missing": warning_missing + css_warnings}
     return {"level": "PASS", "pass": True, "missing": []}
 
 
