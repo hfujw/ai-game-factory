@@ -13,9 +13,15 @@ from app.llm_client import chat, _strip_markdown_fence
 
 SYSTEM_PROMPT = """你是一个"时间工匠"——将历史事件转化为可交互的 HTML 解谜游戏。
 
-=== 视觉风格 ===
-用最简单的 HTML + CSS 把功能做出来。黑底白字、基础按钮、清晰布局即可。
-美术 Agent 会统一注入视觉主题——coder 不要管颜色和装饰。
+=== 视觉契约 ===
+你的 HTML 必须包含以下 artist_pre 提供的 CSS（直接插入 <style> 最前面，不要修改）：
+{visual_css}
+
+【画面切换】5个画面div都加 class="screen"。显示/隐藏通过 classList.toggle('active') 实现。
+不要直接操作 element.style.display——artist_post 会注入 opacity/scale transition。
+
+【类名建议】优先使用 .rune（按钮）、.panel（面板）、.glyph-input（输入框）。
+用不了就用你自己写的，artist_post 会尝试映射。颜色用 CSS 变量 var(--xxx)。
 
 === 新手引导与沉浸感（⚠️ 最重要——决定玩家会不会玩）===
 
@@ -103,6 +109,7 @@ def coder_node(state: GameFactoryState) -> dict:
     """从结构化 GameScript 生成游戏。"""
     puzzle_type = state["puzzle_type"]
     script_data = state.get("script_data", {})
+    visual_css = state.get("visual_css", "")
     review_feedback = state.get("review_feedback", "")
     search_results = state.get("search_results", [])
 
@@ -144,6 +151,9 @@ def coder_node(state: GameFactoryState) -> dict:
 === 🚨 审查反馈（必须修复）===
 {review_feedback}
 """
+
+    # 将 visual_css 注入 system prompt
+    system_prompt = SYSTEM_PROMPT.replace("{visual_css}", visual_css if visual_css else "（无，使用默认黑底白字）")
 
     prompt = f"""请按契约生成「{puzzle_type}」类型的时间解谜游戏。
 
@@ -191,7 +201,7 @@ def coder_node(state: GameFactoryState) -> dict:
 直接输出完整 HTML。"""
 
     try:
-        code = chat(prompt, system=SYSTEM_PROMPT, temperature=0.3)
+        code = chat(prompt, system=system_prompt, temperature=0.3)
         code = _strip_markdown_fence(code)
         if not code.lower().startswith("<!doctype"):
             code = f"<!DOCTYPE html>\n{code}"

@@ -18,7 +18,7 @@ const AGENTS = [
   { key:'writer',   name:'叙事' },
   { key:'coder',    name:'构建' },
   { key:'reviewer', name:'凝视' },
-  { key:'artist',   name:'着色' },
+  { key:'artist_post', name:'着色' },
 ]
 
 export default function App() {

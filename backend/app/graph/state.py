@@ -35,7 +35,8 @@ class GameFactoryState(TypedDict):
     retry_count: int
 
     # === 美术 Agent 产出 ===
-    styled_code: str
+    visual_css: str          # artist_pre 产出的 CSS 契约
+    styled_code: str         # artist_post 产出的最终 HTML
 
     # === 元数据 ===
     status: str
@@ -61,6 +62,7 @@ def initial_state(user_input: str) -> GameFactoryState:
         review_feedback="",
         review_details={},
         retry_count=0,
+        visual_css="",
         styled_code="",
         status="running",
         error_message="",

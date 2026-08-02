@@ -90,7 +90,8 @@ async def generate_game(websocket: WebSocket):
 
         AGENT_NAMES = {
             "planner": "策划Agent", "crawler": "爬虫Agent", "writer": "文案Agent",
-            "coder": "程序Agent", "reviewer": "审查Agent", "artist": "美术Agent",
+            "artist_pre": "美术设计Agent", "coder": "程序Agent", "reviewer": "审查Agent",
+            "artist_post": "美术渲染Agent",
         }
 
         async for event in workflow.astream_events(state, version="v2"):
