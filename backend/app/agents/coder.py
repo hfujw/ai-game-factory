@@ -9,7 +9,7 @@
 
 import json
 from app.graph.state import GameFactoryState
-from app.llm_client import chat, _strip_markdown_fence
+from app.llm_client import agent_log, chat, _strip_markdown_fence
 
 SYSTEM_PROMPT = """你是一个"时间工匠"——将历史事件转化为可交互的 HTML 解谜游戏。
 
@@ -219,7 +219,7 @@ UI风格：{direction.get('ui', '')}
 
         return {
             "game_code": code,
-            "agent_logs": [{"agent": "coder", "action": "code_generated", "detail": f"{len(code)} chars"}],
+            "agent_logs": [agent_log("coder", "code_generated", f"{len(code)} chars")],
         }
     except Exception as e:
         fallback = f"""<!DOCTYPE html>
@@ -230,5 +230,5 @@ UI风格：{direction.get('ui', '')}
 </body></html>"""
         return {
             "game_code": fallback,
-            "agent_logs": [{"agent": "coder", "action": "error", "detail": str(e)}],
+            "agent_logs": [agent_log("coder", "error", str(e))],
         }

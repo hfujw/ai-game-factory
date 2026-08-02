@@ -10,7 +10,7 @@
 
 import json
 from app.graph.state import GameFactoryState
-from app.llm_client import chat_json, _strip_markdown_fence
+from app.llm_client import agent_log, chat_json, _strip_markdown_fence
 from app.knowledge.kb import get_event_by_keyword, event_to_search_results, get_event_names
 from app.mcp.web_search import search as web_search
 
@@ -124,8 +124,7 @@ def crawler_node(state: GameFactoryState) -> dict:
                     "search_results": all_sources,
                     "material_score": 0.4,
                     "material_sufficient": True,
-                    "agent_logs": [{"agent": "crawler", "action": "partial",
-                                   "detail": f"DeepSeek insufficient, using KB+web: {len(all_sources)} sources"}],
+                    "agent_logs": [agent_log("crawler", "partial", f"DeepSeek insufficient, using KB+web: {len(all_sources)} sources")],
                 }
             return {
                 "search_results": [],
@@ -134,7 +133,7 @@ def crawler_node(state: GameFactoryState) -> dict:
                 "error_message": f"关于「{user_input}」没有足够资料。试试更知名的计算机历史事件。",
                 "suggestions": get_event_names()[:5],
                 "status": "failed",
-                "agent_logs": [{"agent": "crawler", "action": "insufficient", "detail": "not found anywhere"}],
+                "agent_logs": [agent_log("crawler", "insufficient", "not found anywhere")],
             }
 
         # DeepSeek 有结果 → 追加
@@ -163,8 +162,7 @@ def crawler_node(state: GameFactoryState) -> dict:
                 "search_results": all_sources,
                 "material_score": 0.3,
                 "material_sufficient": True,
-                "agent_logs": [{"agent": "crawler", "action": "partial",
-                               "detail": f"DeepSeek error, using KB+web: {len(all_sources)} sources"}],
+                "agent_logs": [agent_log("crawler", "partial", f"DeepSeek error, using KB+web: {len(all_sources)} sources")],
             }
         return {
             "search_results": [],
@@ -173,5 +171,5 @@ def crawler_node(state: GameFactoryState) -> dict:
             "error_message": f"知识检索失败: {str(e)}",
             "suggestions": get_event_names()[:5],
             "status": "failed",
-            "agent_logs": [{"agent": "crawler", "action": "error", "detail": str(e)}],
+            "agent_logs": [agent_log("crawler", "error", str(e))],
         }

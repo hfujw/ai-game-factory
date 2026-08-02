@@ -9,7 +9,7 @@
 import json
 
 from app.graph.state import GameFactoryState
-from app.llm_client import chat_json, _strip_markdown_fence
+from app.llm_client import chat_json, _strip_markdown_fence, agent_log
 
 SYSTEM_PROMPT = """你是一个游戏策划师，专门把计算机历史事件改编成解谜小游戏。
 
@@ -74,14 +74,14 @@ def planner_node(state: GameFactoryState) -> dict:
                     "1989年圣诞节 Guido 发明了 Python",
                 ],
                 "status": "failed",
-                "agent_logs": [{"agent": "planner", "action": "insufficient", "detail": result.get("reasoning", "")}],
+                "agent_logs": [agent_log("planner", "insufficient", result.get("reasoning", ""))],
             }
 
         return {
             "puzzle_type": result["puzzle_type"],
             "puzzle_design": result.get("puzzle_design", {}),
             "material_sufficient": True,
-            "agent_logs": [{"agent": "planner", "action": "designed", "detail": result.get("reasoning", "")}],
+            "agent_logs": [agent_log("planner", "designed", result.get("reasoning", ""))],
         }
 
     except Exception as e:
@@ -92,5 +92,5 @@ def planner_node(state: GameFactoryState) -> dict:
             "material_sufficient": False,
             "error_message": f"策划Agent调用LLM失败: {str(e)}",
             "status": "failed",
-            "agent_logs": [{"agent": "planner", "action": "error", "detail": str(e)}],
+            "agent_logs": [agent_log("planner", "error", str(e))],
         }

@@ -3,7 +3,7 @@
 import hashlib
 import json
 import re
-from app.llm_client import chat, _strip_markdown_fence
+from app.llm_client import agent_log, chat, _strip_markdown_fence
 
 # 情绪同义词表
 MOOD_SYNONYMS = {
@@ -131,7 +131,7 @@ def artist_pre_node(state: dict) -> dict:
         return {
             "directions": directions,
             "selected_direction": selected,
-            "agent_logs": [{"agent": "artist_pre", "action": "designed", "detail": f"{puzzle_type}: {directions[0]['name']} vs {directions[1]['name']}, selected={selected['name']}"}]
+            "agent_logs": [agent_log("artist_pre", "designed", f"{puzzle_type}: {directions[0]['name']} vs {directions[1]['name']}, selected={selected['name']}")]
         }
 
     except Exception as e:
@@ -140,5 +140,5 @@ def artist_pre_node(state: dict) -> dict:
         return {
             "directions": fallback,
             "selected_direction": selected,
-            "agent_logs": [{"agent": "artist_pre", "action": "error_fallback", "detail": str(e)}]
+            "agent_logs": [agent_log("artist_pre", "error_fallback", str(e))]
         }

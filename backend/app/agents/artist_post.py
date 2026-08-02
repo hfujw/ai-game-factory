@@ -6,7 +6,7 @@
 """
 
 import re
-from app.llm_client import chat, _strip_markdown_fence
+from app.llm_client import agent_log, chat, _strip_markdown_fence
 
 
 def inject_screen_transition(html: str) -> str:
@@ -104,5 +104,5 @@ def artist_post_node(state: dict) -> dict:
 
     return {
         "styled_code": styled,
-        "agent_logs": [{"agent": "artist_post", "action": "styled", "detail": f"{len(styled)} chars"}]
+        "agent_logs": [agent_log("artist_post", "styled", f"{len(styled)} chars")]
     }

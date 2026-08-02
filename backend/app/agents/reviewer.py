@@ -17,7 +17,7 @@ Phase 2（LLM 质量审查，仅在 Phase 1 通过后执行）：
 import json
 import re
 from app.graph.state import GameFactoryState
-from app.llm_client import chat_json, _strip_markdown_fence
+from app.llm_client import agent_log, chat_json, _strip_markdown_fence
 from app.config import MAX_REVIEW_RETRIES
 from app.knowledge.kb import get_event_names
 
@@ -115,8 +115,7 @@ def reviewer_node(state: GameFactoryState) -> dict:
                 "review_feedback": feedback,
                 "review_details": {"phase": "mechanical_critical", "missing": p1["missing"]},
                 "retry_count": retry_count,
-                "agent_logs": [{"agent": "reviewer", "action": "mechanical_critical",
-                               "detail": f"CRITICAL 缺失 {len(p1['missing'])} 项, 跳过 Phase2"}],
+                "agent_logs": [agent_log("reviewer", "mechanical_critical", f"CRITICAL 缺失 {len(p1['missing'])} 项, 跳过 Phase2")],
             }
             if retry_count >= MAX_REVIEW_RETRIES:
                 result["error_message"] = f"游戏代码经过 {retry_count} 次修改仍有致命结构错误。"

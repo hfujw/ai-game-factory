@@ -66,6 +66,11 @@ def _strip_markdown_fence(text: str) -> str:
     return text.strip()
 
 
+def agent_log(agent: str, action: str, detail: str) -> dict:
+    """统一的 agent 日志格式。所有 Agent 共用，17处调用归一。"""
+    return {"agent": agent, "action": action, "detail": detail}
+
+
 def chat(prompt: str, system: str = "", model: str = None, temperature: float = 0.7) -> str:
     """单轮对话，含自动重试和内容为空保护。
 

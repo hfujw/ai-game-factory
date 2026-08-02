@@ -5,7 +5,7 @@
 
 import json
 from app.graph.state import GameFactoryState
-from app.llm_client import chat, _strip_markdown_fence
+from app.llm_client import chat, _strip_markdown_fence, agent_log
 
 SYSTEM_PROMPT = """你是一个历史教育像素游戏的编剧。
 
@@ -126,8 +126,8 @@ def writer_node(state: GameFactoryState) -> dict:
             "game_script": json.dumps(script, ensure_ascii=False),  # 存为 JSON 字符串，兼容 state
             "script_data": script,  # 结构化数据，coder 可以直接读
             "script_keywords": [user_input, puzzle_type],
-            "agent_logs": [{"agent": "writer", "action": "script_written",
-                           "detail": f"topic={script.get('event',user_input)}, chars={len(raw)}"}],
+            "agent_logs": [agent_log("writer", "script_written",
+                           f"topic={script.get('event',user_input)}, chars={len(raw)}")],
         }
     except Exception as e:
         # JSON 解析失败 → 回退到纯文本，但标记给 coder
@@ -158,5 +158,5 @@ def writer_node(state: GameFactoryState) -> dict:
             "game_script": json.dumps(fallback, ensure_ascii=False),
             "script_data": fallback,
             "script_keywords": [user_input, puzzle_type],
-            "agent_logs": [{"agent": "writer", "action": "fallback", "detail": str(e)}],
+            "agent_logs": [agent_log("writer", "fallback", str(e))],
         }
