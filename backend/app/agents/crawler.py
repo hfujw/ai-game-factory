@@ -65,17 +65,30 @@ def crawler_node(state: GameFactoryState) -> dict:
         all_sources.extend(kb_sources)
         actions.append("kb_hit")
 
-    # === 第2步：web_search（血肉）——即使 KB 命中也跑 ===
-    web_results = web_search(user_input, max_results=5)
-    if web_results:
-        web_sources = _web_results_to_search_results(web_results)
-        all_sources.extend(web_sources)
-        actions.append("web_search")
+    # === 第2步：web_search（血肉）——八股事件有 puzzle_guide 跳过 ===
+    is_predefined = bool(verified_event and verified_event.get("puzzle_guide"))
+    if not is_predefined:
+        web_results = web_search(user_input, max_results=5)
+        if web_results:
+            web_sources = _web_results_to_search_results(web_results)
+            all_sources.extend(web_sources)
+            actions.append("web_search")
+    else:
+        web_results = []
 
     # === 判断：现有素材是否足够 ===
     total_chars = sum(len(s.get("content", "")) for s in all_sources)
     has_kb = verified_event is not None
-    has_web = len(web_results) >= 2
+
+    if is_predefined:
+        # 八股预定义事件：KB 数据已完整，直接通过
+        return {
+            "search_results": all_sources,
+            "material_score": 1.0,
+            "material_sufficient": True,
+            "agent_logs": [agent_log("crawler", "verified",
+                           f"predefined puzzle: {verified_event['puzzle_guide']['type']}, skip web_search")],
+        }
 
     if has_kb and total_chars >= 300:
         # KB + web 数据充足，不调 DeepSeek
@@ -90,7 +103,7 @@ def crawler_node(state: GameFactoryState) -> dict:
             }],
         }
 
-    if not has_kb and has_web and total_chars >= 200:
+    if not has_kb and len(web_results) >= 2 and total_chars >= 200:
         # 无 KB 但 web 够用，不调 DeepSeek
         return {
             "search_results": all_sources,

@@ -245,7 +245,9 @@ UI风格：{direction.get('ui', '')}
     try:
         final_prompt = prompt + direction_block + (bagu_data_block if is_bagu else "")
         final_system = bagu_system if is_bagu else SYSTEM_PROMPT
-        code = chat(final_prompt, system=final_system, temperature=0.3)
+        # 八股温度更低——要准确，不要惊喜
+        temp = 0.1 if is_bagu else 0.3
+        code = chat(final_prompt, system=final_system, temperature=temp)
         code = _strip_markdown_fence(code)
         if not code.lower().startswith("<!doctype"):
             code = f"<!DOCTYPE html>\n{code}"
