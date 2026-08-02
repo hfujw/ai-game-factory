@@ -393,5 +393,635 @@
       "伊利诺伊大学校园"
     ],
     "visual_anchor": "伊利诺伊大学NCSA实验室，22岁的Andreessen盯着屏幕上第一个能显示图片的浏览器，互联网从此有了面孔"
+  },
+  {
+    "event": "1946年 ENIAC 诞生——第一台通用电子计算机",
+    "keywords": [
+      "ENIAC",
+      "电子计算机",
+      "宾夕法尼亚",
+      "Eckert",
+      "Mauchly"
+    ],
+    "aliases": [
+      "第一台电脑",
+      "电子数字积分计算机",
+      "真空管计算机"
+    ],
+    "facts": {
+      "time": "1946年2月14日",
+      "place": "美国宾夕法尼亚大学",
+      "people": [
+        "John Mauchly",
+        "Presper Eckert"
+      ],
+      "story": "1946年情人节，世界上第一台通用电子计算机ENIAC在宾夕法尼亚大学亮相。它重30吨，占地170平方米，用了17468个真空管。每次启动时整个费城的灯都会暗一下。它的第一个任务是计算氢弹的可行性。六位女性程序员完成了世界上第一批电子计算机编程工作，但贡献直到几十年后才被广泛认可。",
+      "fun_fact": "ENIAC的真空管平均每两天烧坏一个，维护工程师需要逐个排查更换。"
+    },
+    "atmosphere_tags": [
+      "机械",
+      "创新",
+      "史诗"
+    ],
+    "key_props": [
+      "真空管",
+      "插线板",
+      "打孔卡",
+      "示波器"
+    ],
+    "visual_anchor": "巨大的机房中，成排的真空管闪烁着橙黄光芒，工程师在插线板间穿梭"
+  },
+  {
+    "event": "1969年 ARPANET 发送了第一条消息——互联网诞生",
+    "keywords": [
+      "ARPANET",
+      "互联网",
+      "第一条消息",
+      "UCLA",
+      "Kleinrock"
+    ],
+    "aliases": [
+      "互联网诞生",
+      "阿帕网",
+      "网络起源",
+      "第一条网络消息"
+    ],
+    "facts": {
+      "time": "1969年10月29日",
+      "place": "美国加州大学洛杉矶分校(UCLA)",
+      "people": [
+        "Leonard Kleinrock",
+        "Charley Kline",
+        "Bill Duvall"
+      ],
+      "story": "1969年10月29日晚上10:30，UCLA的学生Charley Kline试图向500公里外斯坦福研究所的计算机发送单词LOGIN。他输了L，对方说收到。输了O，也收到。输了G——系统崩溃了。所以人类在互联网上发送的第一条消息是LO。",
+      "fun_fact": "互联网的第一条消息LO其实是LOGIN的前两个字母——如果系统没崩溃，互联网的第一个词应该是'登录'。"
+    },
+    "atmosphere_tags": [
+      "创新",
+      "理智",
+      "突破"
+    ],
+    "key_props": [
+      "SDS Sigma 7计算机",
+      "电话线",
+      "IMP接口机",
+      "日志本"
+    ],
+    "visual_anchor": "深夜UCLA实验室，Kline对电话说'收到L了吗？'，屏幕光标等待人类历史上第一次跨计算机通信"
+  },
+  {
+    "event": "1984年 Macintosh 发布——图形界面的革命",
+    "keywords": [
+      "Macintosh",
+      "图形界面",
+      "GUI",
+      "Jobs",
+      "1984广告"
+    ],
+    "aliases": [
+      "Mac",
+      "麦金塔",
+      "苹果Mac",
+      "鼠标电脑"
+    ],
+    "facts": {
+      "time": "1984年1月24日",
+      "place": "美国加州库比蒂诺",
+      "people": [
+        "Steve Jobs",
+        "Jef Raskin",
+        "Bill Atkinson"
+      ],
+      "story": "1984年，苹果发布了Macintosh——第一台普通消费者买得起的图形界面电脑。在此之前个人电脑全靠命令行。Macintosh带来了鼠标、窗口、图标、文件夹。发布会在超级碗期间播出了一支经典广告《1984》：女运动员把铁锤砸向老大哥屏幕。",
+      "fun_fact": "第一代Macintosh的47名团队成员签名被激光刻在每台机器内壳上。2012年一台完好的初代Mac被拆开，这些签名依然清晰。"
+    },
+    "atmosphere_tags": [
+      "创新",
+      "浪漫",
+      "突破"
+    ],
+    "key_props": [
+      "Macintosh电脑",
+      "鼠标",
+      "软盘",
+      "铁锤广告海报"
+    ],
+    "visual_anchor": "超级碗广告中，女运动员的铁锤划破灰色空气，砸向屏幕上的老大哥——Macintosh在爆炸般的白光中诞生"
+  },
+  {
+    "event": "2004年 Facebook 在哈佛宿舍诞生",
+    "keywords": [
+      "Facebook",
+      "Zuckerberg",
+      "哈佛",
+      "社交网络"
+    ],
+    "aliases": [
+      "脸书",
+      "扎克伯格",
+      "FB",
+      "社交平台"
+    ],
+    "facts": {
+      "time": "2004年2月4日",
+      "place": "美国哈佛大学",
+      "people": [
+        "Mark Zuckerberg",
+        "Eduardo Saverin"
+      ],
+      "story": "2004年2月，哈佛大二学生Mark Zuckerberg在宿舍电脑前敲下了thefacebook.com的第一行代码。最初只是一个让哈佛学生互相评分的网站Facemash，上线几小时就被校方关了。一周后thefacebook.com上线，24小时内1200名哈佛学生注册。现在地球上超过30亿人使用Meta旗下的产品。",
+      "fun_fact": "Facebook第一个版本用PHP写的。Zuckerberg后来说：如果你在2004年告诉我PHP能撑起一个30亿用户的平台，我肯定不信——但代码重构永远追不上用户增长速度。"
+    },
+    "atmosphere_tags": [
+      "创新",
+      "轻松",
+      "突破"
+    ],
+    "key_props": [
+      "ThinkPad笔记本电脑",
+      "哈佛宿舍",
+      "PHP代码"
+    ],
+    "visual_anchor": "深夜哈佛宿舍，Zuckerberg穿着拖鞋盯着代码，屏幕蓝光映在墙上"
+  },
+  {
+    "event": "2015年 OpenAI 成立",
+    "keywords": [
+      "OpenAI",
+      "Altman",
+      "GPT",
+      "通用人工智能"
+    ],
+    "aliases": [
+      "开放AI",
+      "奥特曼",
+      "ChatGPT",
+      "人工智能实验室"
+    ],
+    "facts": {
+      "time": "2015年12月11日",
+      "place": "美国旧金山",
+      "people": [
+        "Sam Altman",
+        "Elon Musk",
+        "Greg Brockman",
+        "Ilya Sutskever"
+      ],
+      "story": "2015年底，一群硅谷最聪明的人宣布成立OpenAI，承诺投入10亿美元。真正改变发生在2017年：Transformer论文发表。OpenAI开始大规模训练语言模型。GPT-1到GPT-4，每次迭代都让世界震惊。ChatGPT在2022年11月上线，两个月内用户突破1亿。",
+      "fun_fact": "Elon Musk在2018年退出OpenAI董事会，后来在采访中说：OpenAI本来应该是开源的、非营利的——看看现在变成了什么。"
+    },
+    "atmosphere_tags": [
+      "创新",
+      "理智",
+      "悬疑"
+    ],
+    "key_props": [
+      "Transformer论文",
+      "GPU集群",
+      "旧金山办公室"
+    ],
+    "visual_anchor": "旧金山会议室里，Altman在白板上写下AGI三个字母，窗外是硅谷永恒的蓝天"
+  },
+  {
+    "event": "1998年 Google 在车库里诞生",
+    "keywords": [
+      "Google",
+      "PageRank",
+      "Page",
+      "Brin",
+      "搜索引擎"
+    ],
+    "aliases": [
+      "谷歌",
+      "佩奇",
+      "布林",
+      "车库创业"
+    ],
+    "facts": {
+      "time": "1998年9月4日",
+      "place": "美国加州门洛帕克",
+      "people": [
+        "Larry Page",
+        "Sergey Brin",
+        "Susan Wojcicki"
+      ],
+      "story": "1998年，斯坦福两个博士生把搜索引擎BackRub搬到了Susan Wojcicki家的车库。租金每月1700美元。服务器用乐高积木做的机箱——因为没钱买正经服务器架。他们的算法PageRank把网页之间的链接当作学术引用来计算重要性。那个车库现在被Google买下来原封不动保留。",
+      "fun_fact": "Google这个名字是googol(10的100次方)的拼写错误。Page和Brin想表达能索引海量信息，注册域名时拼错了——于是错有错着。"
+    },
+    "atmosphere_tags": [
+      "创新",
+      "轻松",
+      "理智"
+    ],
+    "key_props": [
+      "乐高服务器机箱",
+      "PageRank算法草图",
+      "车库门"
+    ],
+    "visual_anchor": "加州车库里，Page和Brin坐在二手办公桌前，身后是用乐高积木搭成的服务器架"
+  },
+  {
+    "event": "2007年 iPhone 重新定义了手机",
+    "keywords": [
+      "iPhone",
+      "Jobs",
+      "触屏",
+      "智能手机",
+      "多点触控"
+    ],
+    "aliases": [
+      "苹果手机",
+      "第一代iPhone",
+      "触屏革命"
+    ],
+    "facts": {
+      "time": "2007年1月9日",
+      "place": "美国旧金山Moscone Center",
+      "people": [
+        "Steve Jobs",
+        "Jony Ive",
+        "Scott Forstall"
+      ],
+      "story": "2007年1月Macworld大会，Jobs说了被载入科技史的话：今天我们将重新发明手机。他举起一台没有键盘的手机——只有一块巨大的玻璃屏幕。iPhone不是第一部智能手机，但它是第一部让人们真正想用的智能手机。发布会前一晚Wi-Fi不稳定触屏偶尔失灵，工程师通宵修复。Jobs完美演示了整场发布会。",
+      "fun_fact": "iPhone发布前最后一晚，Jobs对团队大发雷霆因为Wi-Fi不稳定。工程师通宵修复，第二天Jobs必须严格按照排练顺序演示，任何偏离都可能导致演示崩溃。"
+    },
+    "atmosphere_tags": [
+      "创新",
+      "突破",
+      "紧张"
+    ],
+    "key_props": [
+      "iPhone原型机",
+      "黑色高领衫",
+      "触控屏"
+    ],
+    "visual_anchor": "聚光灯下的舞台上，Jobs举起一台没有键盘的黑色玻璃板，指尖滑动时整个世界屏住了呼吸"
+  },
+  {
+    "event": "2017年 Transformer 论文改变了 AI 世界",
+    "keywords": [
+      "Transformer",
+      "Attention",
+      "论文",
+      "Vaswani",
+      "NIPS"
+    ],
+    "aliases": [
+      "变换器",
+      "注意力机制",
+      "Transformers"
+    ],
+    "facts": {
+      "time": "2017年6月",
+      "place": "Google Brain，美国",
+      "people": [
+        "Ashish Vaswani",
+        "Noam Shazeer",
+        "Niki Parmar"
+      ],
+      "story": "2017年，Google八个研究员发表论文《Attention Is All You Need》。核心想法非常简单：每个词都要注意所有其他词。他们把这个架构叫Transformer。这篇论文的真正影响在之后几年才爆炸：BERT、GPT、T5、所有大语言模型的基础都是Transformer。八个作者中有七个后来创办了AI创业公司。",
+      "fun_fact": "八个作者中有六人在2022-2024年间离开Google创办了AI公司，被媒体称为Transformer Mafia（Transformer黑帮）。"
+    },
+    "atmosphere_tags": [
+      "理智",
+      "创新",
+      "机械"
+    ],
+    "key_props": [
+      "Transformer架构图",
+      "NIPS论文集",
+      "注意力矩阵"
+    ],
+    "visual_anchor": "Google Brain会议室里，Vaswani在玻璃板上画出注意力机制的矩阵图——像宇宙星图一样复杂而优雅"
+  },
+  {
+    "event": "1968年 Intel 成立——微处理器的诞生",
+    "keywords": [
+      "Intel",
+      "微处理器",
+      "硅谷",
+      "Noyce",
+      "Moore"
+    ],
+    "aliases": [
+      "英特尔",
+      "芯片",
+      "摩尔定律",
+      "集成电路"
+    ],
+    "facts": {
+      "time": "1968年7月18日",
+      "place": "美国加州山景城",
+      "people": [
+        "Robert Noyce",
+        "Gordon Moore",
+        "Andy Grove"
+      ],
+      "story": "1968年，三名工程师从仙童半导体出走创办了Intel。1971年他们接到了日本公司的计算器芯片订单，工程师Federico Faggin做了一个大胆决定——设计一块通用的可编程芯片。这就是世界上第一个微处理器Intel 4004。它只有拇指大小，计算能力相当于一台重30吨的ENIAC。",
+      "fun_fact": "Robert Noyce是硅谷唯二同时创办两家传奇公司的人。Steve Jobs年轻时曾打电话给Noyce请教创业问题，Noyce花了一个小时耐心回答。"
+    },
+    "atmosphere_tags": [
+      "创新",
+      "机械",
+      "精密"
+    ],
+    "key_props": [
+      "Intel 4004芯片",
+      "硅晶圆",
+      "摩尔定律曲线图"
+    ],
+    "visual_anchor": "硅谷实验室里，Noyce在显微镜下检查指甲盖大小的硅片，上面蚀刻着两千多个晶体管——这是人类在沙子上建造的城市"
+  },
+  {
+    "event": "2008年 GitHub 改变了程序员协作方式",
+    "keywords": [
+      "GitHub",
+      "Git",
+      "协作",
+      "开源",
+      "Preston-Werner"
+    ],
+    "aliases": [
+      "GayHub",
+      "代码仓库",
+      "Git平台"
+    ],
+    "facts": {
+      "time": "2008年4月10日",
+      "place": "美国旧金山",
+      "people": [
+        "Tom Preston-Werner",
+        "Chris Wanstrath",
+        "PJ Hyett"
+      ],
+      "story": "2008年，三个开发者在周末编程活动中创建了GitHub。核心创新简单得不像革命：给Git加了一个网页界面，然后加了Pull Request按钮。就是这个按钮改变了整个软件开发世界。2018年微软以75亿美元收购了GitHub。",
+      "fun_fact": "GitHub的第一个版本用Ruby on Rails写的，运行在一台共享主机上。创始人说他完全没想到这个'给Git加网页界面的小项目'会变成地球上最大的代码仓库。"
+    },
+    "atmosphere_tags": [
+      "创新",
+      "轻松",
+      "理智"
+    ],
+    "key_props": [
+      "Pull Request按钮",
+      "Octocat章鱼猫",
+      "Ruby on Rails"
+    ],
+    "visual_anchor": "旧金山周末编程活动现场，三个年轻人在白板上画出一个简单的网页界面——中间有一个绿色合并按钮"
+  },
+  {
+    "event": "2022年 ChatGPT 上线掀起了 AI 革命",
+    "keywords": [
+      "ChatGPT",
+      "GPT",
+      "OpenAI",
+      "对话AI"
+    ],
+    "aliases": [
+      "聊天GPT",
+      "AI对话",
+      "人工智能助手"
+    ],
+    "facts": {
+      "time": "2022年11月30日",
+      "place": "OpenAI，旧金山",
+      "people": [
+        "Sam Altman",
+        "Mira Murati",
+        "Greg Brockman"
+      ],
+      "story": "2022年11月30日，OpenAI团队按下了ChatGPT发布按钮——所有人都以为只是一次普通的实验性发布。五天之内100万用户注册。两个月之内1亿用户——人类历史上增长最快的消费应用。ChatGPT让大语言模型从一个研究话题变成了每个普通人都能使用的工具。",
+      "fun_fact": "发布前团队在Slack上预测第一周会有多少用户，大部分猜几千到几万。没有人猜对——因为没有人能想象人类对AI对话的渴望有多大。"
+    },
+    "atmosphere_tags": [
+      "创新",
+      "突破",
+      "悬疑"
+    ],
+    "key_props": [
+      "ChatGPT界面",
+      "GPT模型权重",
+      "用户增长曲线图"
+    ],
+    "visual_anchor": "2022年冬天的旧金山，OpenAI办公室灯火通明，屏幕上的用户数字以每秒数百人的速度跳动"
+  },
+  {
+    "event": "1983年 GNU 计划开启了自由软件运动",
+    "keywords": [
+      "GNU",
+      "Stallman",
+      "自由软件",
+      "GPL",
+      "FSF"
+    ],
+    "aliases": [
+      "GNU计划",
+      "斯托曼",
+      "开源运动",
+      "GPL协议"
+    ],
+    "facts": {
+      "time": "1983年9月27日",
+      "place": "美国麻省理工学院",
+      "people": [
+        "Richard Stallman"
+      ],
+      "story": "1983年，MIT程序员Richard Stallman宣布要写一个完全自由的操作系统叫GNU。起因是实验室新买了一台激光打印机，他想修改驱动程序但厂商拒绝提供源代码。他辞掉MIT工作开始了GNU工具链。1985年创立自由软件基金会，1989年发布GPL许可证——后来成为Linux、Git等无数开源项目的基石。",
+      "fun_fact": "Stallman在办公室地板上睡了两年，因为不愿花时间通勤——他有太多代码要写。他的个人网站至今用纯HTML手写，没有CSS。"
+    },
+    "atmosphere_tags": [
+      "悲壮",
+      "理智",
+      "史诗"
+    ],
+    "key_props": [
+      "GNU宣言",
+      "GCC编译器",
+      "Emacs编辑器"
+    ],
+    "visual_anchor": "MIT深夜实验室，Stallman在终端前敲下一行行代码——他在为一种叫自由的东西写宪法"
+  },
+  {
+    "event": "2001年 维基百科创建——人类知识的共同编辑",
+    "keywords": [
+      "Wikipedia",
+      "维基",
+      "百科全书",
+      "Wales",
+      "Sanger"
+    ],
+    "aliases": [
+      "维基百科",
+      "Wiki",
+      "在线百科"
+    ],
+    "facts": {
+      "time": "2001年1月15日",
+      "place": "美国佛罗里达州",
+      "people": [
+        "Jimmy Wales",
+        "Larry Sanger"
+      ],
+      "story": "2001年，Jimmy Wales尝试过一个叫Nupedia的在线百科全书——专家编写、七步评审。结果一年只写了24篇文章。他把Nupedia改成了任何人都可以编辑的Wiki。20年后维基百科有超过600万篇英文文章，全球访问量第七。它证明了陌生人可以在互联网上协作创造知识。",
+      "fun_fact": "维基百科的第一条编辑是Wales写的：Hello, World！——程序员最熟悉的那句话。"
+    },
+    "atmosphere_tags": [
+      "浪漫",
+      "创新",
+      "轻松"
+    ],
+    "key_props": [
+      "Wiki首页",
+      "编辑按钮",
+      "服务器机柜"
+    ],
+    "visual_anchor": "佛罗里达简陋办公室里，Wales盯着屏幕上第一篇Wiki文章——他刚给全人类发了一张可以无限编辑的白纸"
+  },
+  {
+    "event": "1998年 Winamp 让 MP3 音乐席卷全球",
+    "keywords": [
+      "Winamp",
+      "MP3",
+      "音乐",
+      "Nullsoft",
+      "Frankel"
+    ],
+    "aliases": [
+      "Win播放器",
+      "MP3播放器",
+      "数字音乐"
+    ],
+    "facts": {
+      "time": "1998年",
+      "place": "美国犹他州",
+      "people": [
+        "Justin Frankel",
+        "Dmitry Boldyrev"
+      ],
+      "story": "1998年，19岁的Justin Frankel写了Winamp——不到3MB的MP3播放器。最革命的是皮肤系统：任何人可以给Winamp换皮肤。AOL在1999年以8000万美元收购了Nullsoft。2022年Winamp试图回归，但那个经典的闪电标志已经成了一个时代的乡愁。",
+      "fun_fact": "Winamp的口号是'It really whips the llama's ass'——直译是'它真的能把羊驼的屁股打烂'。这个莫名其妙的短语来自Frankel大学时的一个内部笑话。"
+    },
+    "atmosphere_tags": [
+      "轻松",
+      "浪漫",
+      "创新"
+    ],
+    "key_props": [
+      "Winamp闪电Logo",
+      "均衡器",
+      "皮肤文件"
+    ],
+    "visual_anchor": "1998年大学宿舍里，Frankel的电脑屏幕上跳动着Winamp的绿色均衡器"
+  },
+  {
+    "event": "1999年 Napster 引发了音乐产业的革命",
+    "keywords": [
+      "Napster",
+      "P2P",
+      "音乐",
+      "Fanning",
+      "文件共享"
+    ],
+    "aliases": [
+      "纳普斯特",
+      "点对点",
+      "音乐分享"
+    ],
+    "facts": {
+      "time": "1999年6月1日",
+      "place": "美国波士顿东北大学",
+      "people": [
+        "Shawn Fanning",
+        "Sean Parker"
+      ],
+      "story": "1999年，18岁大学生Shawn Fanning在宿舍里写了Napster——让人们可以互相分享MP3。上线三个月500万用户。Metallica的鼓手亲自跑到Napster办公室投诉。法院最终关闭了Napster，但P2P文件的精灵已经从瓶子里逃出来了。Napster证明互联网可以去掉所有中间商。",
+      "fun_fact": "Metallica起诉Napster之前，他们的歌曲I Disappear已经在Napster上被下载超过30万次——当时这首歌还没正式发行。"
+    },
+    "atmosphere_tags": [
+      "紧张",
+      "创新",
+      "突破"
+    ],
+    "key_props": [
+      "Napster蓝色Logo",
+      "MP3文件列表",
+      "大学宿舍"
+    ],
+    "visual_anchor": "波士顿大学宿舍里，Fanning盯着屏幕上的用户数字飞速增长"
+  },
+  {
+    "event": "1991年 Unicode 统一了全球文字编码",
+    "keywords": [
+      "Unicode",
+      "编码",
+      "文字",
+      "UTF-8",
+      "Becker"
+    ],
+    "aliases": [
+      "统一码",
+      "万国码",
+      "字符集",
+      "UTF8"
+    ],
+    "facts": {
+      "time": "1991年10月",
+      "place": "美国加州",
+      "people": [
+        "Joe Becker",
+        "Lee Collins",
+        "Mark Davis"
+      ],
+      "story": "在Unicode出现之前，每种语言都有自己的编码方式。一封中文邮件发到日本电脑会变成乱码。1987年苹果的Joe Becker开始了一个疯狂项目：给地球上每一种文字一个唯一编号。今天Unicode收录超过15万字符覆盖159种文字系统。如果没有Unicode，你的emoji和中文在同一行显示根本不可能。",
+      "fun_fact": "Unicode在2011年首次收录emoji。苹果的粪堆emoji标着ALIEN MONSTER（外星怪物），而三星版本看起来像巧克力冰淇淋。"
+    },
+    "atmosphere_tags": [
+      "理智",
+      "创新",
+      "史诗"
+    ],
+    "key_props": [
+      "Unicode字符表",
+      "UTF-8编码图",
+      "多语言键盘"
+    ],
+    "visual_anchor": "苹果办公室白板上，Becker画出了一张覆盖全球的字符映射表——拉丁、阿拉伯、汉字、楔形文字"
+  },
+  {
+    "event": "2014年 Docker 改变了软件部署方式",
+    "keywords": [
+      "Docker",
+      "容器",
+      "虚拟化",
+      "DevOps",
+      "Hykes"
+    ],
+    "aliases": [
+      "道客",
+      "容器化",
+      "容器技术"
+    ],
+    "facts": {
+      "time": "2014年",
+      "place": "美国旧金山",
+      "people": [
+        "Solomon Hykes",
+        "Sebastien Pahl"
+      ],
+      "story": "2014年，一家叫dotCloud的初创公司开发了Docker——把应用程序和所有依赖打包成一个标准化容器。在此之前部署一个Web应用需要几个小时甚至几天。现在一行docker run命令。两年内Docker从内部工具变成估值10亿美元的公司，激发了Kubernetes和整个云原生生态。",
+      "fun_fact": "Docker的Logo是一只名叫Moby Dock的鲸鱼，背上驮着集装箱——隐喻容器化像集装箱标准化运输。名字致敬了《白鲸记》。"
+    },
+    "atmosphere_tags": [
+      "创新",
+      "机械",
+      "精密"
+    ],
+    "key_props": [
+      "Docker鲸鱼Logo",
+      "容器引擎",
+      "Dockerfile"
+    ],
+    "visual_anchor": "2013年旧金山PyCon大会上，Hykes在舞台上第一次演示docker run——台下程序员眼睛越来越亮"
   }
 ]
