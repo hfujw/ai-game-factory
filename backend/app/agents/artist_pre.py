@@ -97,6 +97,22 @@ DEFAULT_DIRECTIONS = {
     "logic": [
         {"name": "深空星图", "mood_tags": ["悬疑"], "palette": ["#0a0a1a", "#6366f1", "#34d399", "#e8ddd0", "#4a4a6a"], "ui": "菱形符文按钮，光线连线，罗盘方位选项，深空背景", "animation": "神秘缓慢，光线逐段绘制，像星图在黑暗中自显", "reference_css": ".rune{clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);padding:16px 24px;border:none;background:rgba(99,102,241,0.1)}.panel{border:1px solid rgba(99,102,241,0.15);background:rgba(10,10,26,0.92)}", "post": {"crt": False, "particles": "star", "atmosphere": "body::after{content:;position:fixed;inset:0;background:radial-gradient(circle at 50% 50%,rgba(99,102,241,0.05),transparent 70%);pointer-events:none;}"}},
         {"name": "推演沙盘", "mood_tags": ["理智"], "palette": ["#0a0a0a", "#e8702a", "#34d399", "#e8ddd0", "#5a4a3a"], "ui": "几何网格方块按钮，沙盘质感面板，滑动式选项", "animation": "理性干脆，方块滑动对齐，正确时有清脆咬合感", "reference_css": ".rune{border:1px solid #5a4a3a;border-radius:2px;padding:12px 24px;font-size:14px}.panel{border:1px solid rgba(90,74,58,0.2);background:rgba(20,16,12,0.95)}", "post": {"crt": False, "particles": "none", "atmosphere": "body::after{content:;position:fixed;inset:0;background:linear-gradient(90deg,transparent 49%,rgba(90,74,58,0.03) 50%,transparent 51%);background-size:40px 100%;pointer-events:none;}"}}
+    ],
+    # Python 八股 — 终端 IDE 风格
+    "fill_blank": [
+        {"name": "VS Code 暗色", "mood_tags": ["终端", "代码"], "palette": ["#0d1117", "#58a6ff", "#7ee787", "#e6edf3", "#30363d"], "ui": "VS Code风格编辑器，行号灰色，关键字蓝色语法高亮，空位闪烁下划线", "animation": "代码填对时逐行变绿，终端输出模拟结果", "reference_css": "body{background:#0d1117;font-family:'Fira Code',monospace}.rune{border:1px solid #58a6ff;color:#58a6ff;font-size:13px}.panel{background:#161b22;border:1px solid #30363d}", "post": {"crt": False, "particles": "none", "atmosphere": ""}},
+        {"name": "终端绿屏", "mood_tags": ["终端", "代码"], "palette": ["#0d1117", "#7ee787", "#58a6ff", "#e6edf3", "#30363d"], "ui": "绿字终端风格，荧光绿代码，矩阵感光标", "animation": "绿色字符逐个打印，完成时屏幕闪烁", "reference_css": "body{background:#0d1117;font-family:'Fira Code',monospace;color:#7ee787}.rune{border:1px solid #7ee787;color:#7ee787}.panel{background:#161b22;border:1px solid #30363d}", "post": {"crt": True, "particles": "none", "atmosphere": ""}}
+    ],
+    "recite": [
+        {"name": "IDE 练习场", "mood_tags": ["终端", "代码"], "palette": ["#0d1117", "#58a6ff", "#7ee787", "#e6edf3", "#30363d"], "ui": "代码编辑器风格，行号+语法高亮+Tab缩进，难度三档切换", "animation": "正确行绿色高亮，错误行红色波浪线", "reference_css": "body{background:#0d1117;font-family:'Fira Code',monospace}.rune{font-size:13px}.panel{background:#161b22;border:1px solid #30363d}", "post": {"crt": False, "particles": "none", "atmosphere": ""}},
+        {"name": "极客终端", "mood_tags": ["终端", "代码"], "palette": ["#0d1117", "#7ee787", "#e6edf3", "#30363d", "#58a6ff"], "ui": "极简终端，只有光标和代码，无多余UI", "animation": "逐行显示，正确时终端输出 success", "reference_css": "body{background:#0d1117;color:#e6edf3;font-family:'Fira Code',monospace}.rune{border:1px solid #7ee787;color:#7ee787}.panel{background:#161b22;border:1px solid #30363d}", "post": {"crt": True, "particles": "none", "atmosphere": ""}}
+    ],
+    "match": [
+        {"name": "知识连线板", "mood_tags": ["终端", "代码"], "palette": ["#0d1117", "#58a6ff", "#7ee787", "#e6edf3", "#30363d"], "ui": "左右两栏卡片，SVG连线，正确绿线+错误红线抖动", "animation": "全部配对后电路板式点亮动画", "reference_css": "body{background:#0d1117;font-family:'Fira Code',monospace}.rune{font-size:13px}.panel{background:#161b22;border:1px solid #30363d}", "post": {"crt": False, "particles": "none", "atmosphere": ""}},
+        {"name": "概念星图", "mood_tags": ["终端", "代码"], "palette": ["#0d1117", "#6366f1", "#7ee787", "#e6edf3", "#30363d"], "ui": "概念节点+光线连接，像星图推演但偏理性", "animation": "连接正确时光线延伸，错误断裂", "reference_css": "body{background:#0d1117;font-family:'Fira Code',monospace}.rune{border:1px solid #6366f1;color:#6366f1}.panel{background:#161b22;border:1px solid #30363d}", "post": {"crt": False, "particles": "star", "atmosphere": ""}}
+    ],
+    "debugger": [
+        {"name": "调试控制台", "mood_tags": ["终端", "代码"], "palette": ["#0d1117", "#f85149", "#7ee787", "#e6edf3", "#30363d"], "ui": "VS Code调试视图，行号可点击，Bug高亮红色，控制台报错显示", "animation": "定位正确时Bug图标碎裂变绿勾", "reference_css": "body{background:#0d1117;font-family:'Fira Code',monospace}.rune{border:1px solid #f85149;color:#f85149;font-size:13px}.panel{background:#161b22;border:1px solid #30363d}", "post": {"crt": False, "particles": "none", "atmosphere": ""}}
     ]
 }
 

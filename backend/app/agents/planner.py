@@ -19,6 +19,10 @@ SYSTEM_PROMPT = """你是一个游戏策划师，专门把计算机历史事件�
    - "cipher"：事件涉及密码、破译、加密（如 Enigma、RSA）
    - "sequence"：事件有清晰的时间线或因果链（如语言的诞生过程）
    - "logic"：事件涉及冲突、博弈、选择（如浏览器大战、开源vs闭源）
+   - "fill_blank"：Python 八股代码填空（如装饰器、上下文管理器）
+   - "recite"：Python 八股代码默写（如生成器、描述符）
+   - "match"：Python 八股概念配对（如深浅拷贝、GIL）
+   - "debugger"：Python 八股 Bug 定位（如可变默认参数陷阱）
 
 2. 基于史料内容设计谜题机制：
    - mechanic：谜题怎么玩（一句话描述玩法）

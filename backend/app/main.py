@@ -49,16 +49,20 @@ async def get_cost():
 
 
 @app.get("/api/events")
-async def list_events():
-    """返回知识库事件列表——前端用做推荐chips。"""
-    events = get_all_events()
-    return {
-        "events": [
-            {"name": e["event"], "keywords": e.get("keywords", [])[:3]}
-            for e in events
-        ],
-        "total": len(events),
-    }
+async def list_events(category: str = None):
+    """返回知识库事件列表。category 可选 'computer_history' / 'bagu' / 不传=全部。"""
+    events = get_all_events(category=category if category else None)
+    result = []
+    for e in events:
+        name = e.get("event", e.get("title", ""))
+        difficulty = e.get("difficulty", 0)
+        result.append({
+            "name": name,
+            "category": e.get("category", "computer_history"),
+            "difficulty": difficulty,
+            "type": e.get("puzzle_guide", {}).get("type", "unknown") if category == "bagu" else "",
+        })
+    return {"events": result, "total": len(result)}
 
 
 @app.websocket("/ws/generate")
