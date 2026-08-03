@@ -93,8 +93,12 @@ async def generate_game(websocket: WebSocket):
         final_output = {}
 
         AGENT_NAMES = {
-            "planner": "策划Agent", "crawler": "爬虫Agent", "writer": "文案Agent",
-            "artist_pre": "美术设计Agent", "coder": "程序Agent", "reviewer": "审查Agent",
+            "planner": "策划Agent",
+            "crawler": "爬虫Agent",
+            "writer": "文案Agent",
+            "artist_pre": "美术设计Agent",
+            "coder": "程序Agent",
+            "reviewer": "审查Agent",
             "artist_post": "美术渲染Agent",
         }
 

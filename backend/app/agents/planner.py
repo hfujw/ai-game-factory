@@ -3,11 +3,11 @@
 输入：search_results（爬虫搜到的史料）+ user_input
 输出：puzzle_type + puzzle_design
 
-使用 DeepSeek API 分析史料内容，不是关键词匹配。
+条件短路：KB 提供的 puzzle_guide 只有在 annotations >= 3 且 expected_output 存在时才直接
+使用；否则把 KB 提示注入 LLM prompt，让 LLM 基于完整素材重新设计。
 """
 
 import json
-
 from app.graph.state import GameFactoryState
 from app.llm_client import chat_json, _strip_markdown_fence, agent_log
 
@@ -47,36 +47,64 @@ SYSTEM_PROMPT = """你是一个游戏策划师，专门把计算机历史事件�
 def planner_node(state: GameFactoryState) -> dict:
     """基于史料内容 → LLM 分析 → 选择谜题类型 + 设计机制。
 
-    如果 search_results 中已有 puzzle_guide（八股等预定义题型），直接使用，不调 LLM。
+    条件短路：只有 KB 数据完整（annotations >= 3 且 expected_output 存在）时才跳过 LLM。
     """
     user_input = state["user_input"]
     search_results = state.get("search_results", [])
 
-    # 八股/预定义题型：直接从 KB 数据中提取 puzzle_type，跳过 LLM
+    # === 步骤 1：查找 KB 是否提供了 puzzle_guide ===
+    kb_guide = None
     for r in search_results:
         pg = r.get("puzzle_guide", {})
         if pg and pg.get("type"):
+            kb_guide = pg
+            break
+
+    # === 步骤 2：条件短路判断 ===
+    if kb_guide:
+        annotations = kb_guide.get("annotations", [])
+        has_expected_output = bool(kb_guide.get("expected_output"))
+
+        if len(annotations) >= 3 and has_expected_output:
+            # 数据完整，安全短路
             return {
-                "puzzle_type": pg["type"],
+                "puzzle_type": kb_guide["type"],
                 "puzzle_design": {
-                    "mechanic": f"Python 面试 - {pg['type']}",
-                    "rules": "; ".join(pg.get("annotations", r.get("key_facts", [])))[:200],
-                    "win_condition": "所有空位填写正确" if pg["type"] == "fill_blank" else "代码通过校验",
+                    "mechanic": f"Python 面试 - {kb_guide['type']}",
+                    "rules": "；".join(annotations),
+                    "win_condition": (
+                        "所有空位填写正确" if kb_guide["type"] == "fill_blank"
+                        else "代码通过校验" if kb_guide["type"] in ("recite", "debugger")
+                        else "所有配对正确" if kb_guide["type"] == "match"
+                        else "通关"
+                    ),
                 },
                 "material_sufficient": True,
-                "agent_logs": [agent_log("planner", "predefined", f"type={pg['type']} from KB")],
+                "agent_logs": [agent_log("planner", "predefined",
+                    f"type={kb_guide['type']} from KB, annotations={len(annotations)}, expected_output=ok")],
             }
+        # 数据不完整：继续走 LLM，但把 KB 提示注入 prompt（见下方）
 
-    # 拼接史料文本（crawler 返回 content + key_facts，没有 snippet）
+    # === 步骤 3：拼接史料文本 ===
     sources_text = "\n\n".join(
         f"[来源{i+1}] {r.get('title', '')}\n{r.get('content', '')[:500]}"
         for i, r in enumerate(search_results)
     )
 
-    prompt = f"""用户想了解的历史事件：{user_input}
+    # 如果有不完整的 KB 提示，注入 prompt 帮助 LLM 决策
+    kb_hint = ""
+    if kb_guide:
+        kb_hint = f"""
+【知识库提示】该事件疑似八股题，知识库提供了初步信息：
+- 建议类型：{kb_guide['type']}
+- 现有 annotations：{json.dumps(kb_guide.get('annotations', []), ensure_ascii=False)}
+- 但数据不够完整（annotations < 3 或缺少 expected_output），请基于以下完整史料重新设计谜题机制，类型优先选择「{kb_guide['type']}」。
+"""
 
+    prompt = f"""用户想了解的历史事件：{user_input}
+{kb_hint}
 以下是爬虫搜到的史料：
-{sources_text}
+{sources_text if sources_text else '（使用你的知识）'}
 
 请基于史料内容决定谜题类型和机制。如果史料太单薄，返回 material_sufficient=false。"""
 
@@ -107,7 +135,20 @@ def planner_node(state: GameFactoryState) -> dict:
         }
 
     except Exception as e:
-        # LLM 调用失败 → 返回失败，不走后续 Agent
+        # LLM 调用失败 → 如果 KB 有数据（即使不完整），降级使用
+        if kb_guide:
+            return {
+                "puzzle_type": kb_guide["type"],
+                "puzzle_design": {
+                    "mechanic": f"Python 面试 - {kb_guide['type']}",
+                    "rules": "；".join(kb_guide.get("annotations", [])),
+                    "win_condition": "通关",
+                },
+                "material_sufficient": True,
+                "agent_logs": [agent_log("planner", "fallback_to_kb",
+                    f"LLM failed, fallback to KB type={kb_guide['type']}, error={str(e)}")],
+            }
+
         return {
             "puzzle_type": "unknown",
             "puzzle_design": {},
