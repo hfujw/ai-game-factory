@@ -105,6 +105,46 @@ SYSTEM_PROMPT = """你是一个"时间工匠"——将历史事件转化为可�
 - 直接输出代码，不要 markdown 包裹"""
 
 
+def _fill_blank_from_skeleton(state, search_results, script_data) -> dict:
+    """用 fill_blank 骨架模板 + 数据填充，零 LLM 调用。"""
+    import os
+    skeleton_path = os.path.join(os.path.dirname(__file__), "..", "templates", "skeleton_fill_blank.html")
+    with open(skeleton_path, "r", encoding="utf-8") as f:
+        skeleton = f.read()
+
+    # 提取 puzzle_guide
+    puzzle_guide = {}
+    for r in search_results:
+        if r.get("puzzle_guide"):
+            puzzle_guide = r["puzzle_guide"]
+            break
+
+    facts = script_data.get("history_facts", {})
+    if isinstance(facts, list):
+        facts = {"title": "", "story": "", "key_point": "", "fun_fact": ""}
+
+    # 填充占位符
+    html = skeleton
+    html = html.replace("{{TITLE}}", script_data.get("event", "Python 面试题"))
+    html = html.replace("{{SUBTITLE}}", f'难度 {"★"*script_data.get("year",1)}{"☆"*(4-script_data.get("year",1))}')
+    html = html.replace("{{OPENING_HOOK}}", script_data.get("opening_hook", "你能填对这段代码吗？"))
+    html = html.replace("{{HOWTO_TEXT}}", "点击代码中的 ___ 空位，输入正确答案后按 Enter。填对所有空位即可通关。")
+    html = html.replace("{{MAX_ATTEMPTS}}", str(puzzle_guide.get("scoring", {}).get("base_score", 100) // 30 if puzzle_guide.get("scoring") else 3))
+    html = html.replace("{{PUZZLE_DATA_JSON}}", json.dumps(puzzle_guide, ensure_ascii=False))
+    html = html.replace("{{HISTORY_JSON}}", json.dumps(facts, ensure_ascii=False))
+    html = html.replace("{{HISTORY_TITLE}}", facts.get("title", "知识点"))
+    html = html.replace("{{HISTORY_STORY}}", facts.get("story", ""))
+    html = html.replace("{{KEY_POINT}}", facts.get("key_point", ""))
+    html = html.replace("{{FUN_FACT}}", facts.get("fun_fact", ""))
+    html = html.replace("{{VICTORY_LINE}}", script_data.get("victory_line", "Process finished with exit code 0"))
+    html = html.replace("{{DEFEAT_LINE}}", script_data.get("defeat_line", "NameError: knowledge not defined"))
+
+    return {
+        "game_code": html,
+        "agent_logs": [agent_log("coder", "skeleton_filled", f"fill_blank from skeleton, {len(html)} chars")],
+    }
+
+
 def get_puzzle_meaning(puzzle_type: str, event: str, protagonist: str) -> str:
     """为每种谜题类型生成'为什么这个谜题有意义'的叙事框架。"""
     templates = {
@@ -116,12 +156,19 @@ def get_puzzle_meaning(puzzle_type: str, event: str, protagonist: str) -> str:
 
 
 def coder_node(state: GameFactoryState) -> dict:
-    """从结构化 GameScript 生成游戏。支持计算机历史 + 八股两种模式。"""
+    """从结构化 GameScript 生成游戏。支持计算机历史 + 八股两种模式。
+
+    fill_blank 走骨架模板（零 LLM），其他类型走 LLM。
+    """
     puzzle_type = state["puzzle_type"]
     script_data = state.get("script_data", {})
     direction = state.get("selected_direction", {})
     review_feedback = state.get("review_feedback", "")
     search_results = state.get("search_results", [])
+
+    # === fill_blank 骨架模板路径（零 LLM）===
+    if puzzle_type == "fill_blank":
+        return _fill_blank_from_skeleton(state, search_results, script_data)
 
     # 八股类型 → 使用对应交互模板
     is_bagu = puzzle_type in BAGU_TEMPLATES

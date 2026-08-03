@@ -6,6 +6,25 @@
 
 from typing import TypedDict, List, Optional, Annotated
 import operator
+from pydantic import BaseModel, Field
+
+
+class PuzzleSpec(BaseModel):
+    """谜题规格——Pydantic 强校验"""
+    type: str = ""
+    answer: str = ""
+    hints: list[dict] = Field(default_factory=list)
+    max_attempts: int = 3
+    items_count: int = 0
+    items_labels: list[str] = Field(default_factory=list)
+
+
+class GameDesignDoc(BaseModel):
+    """游戏设计文档——writer→coder 的结构化中间层"""
+    puzzle_spec: PuzzleSpec = Field(default_factory=PuzzleSpec)
+    screens: list[dict] = Field(default_factory=list)
+    content_map: dict = Field(default_factory=dict)
+    visual_spec: dict = Field(default_factory=dict)
 
 
 class GameFactoryState(TypedDict):
@@ -23,7 +42,8 @@ class GameFactoryState(TypedDict):
 
     # === 文案 Agent 产出 ===
     game_script: str
-    script_data: dict           # writer 产出的结构化剧本，artist_pre/coder 消费
+    script_data: dict              # writer 产出的结构化剧本，artist_pre/coder 消费
+    game_design_doc: Optional[dict] # designer 产出的 GDD（中期扩展用，当前 writer 填充）
     script_keywords: List[str]
 
     # === 程序 Agent 产出 ===
@@ -59,6 +79,7 @@ def initial_state(user_input: str) -> GameFactoryState:
         material_sufficient=False,
         game_script="",
         script_data={},
+        game_design_doc=None,
         script_keywords=[],
         game_code="",
         review_passed=False,
