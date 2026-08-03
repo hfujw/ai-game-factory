@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>{{TITLE}}</title>
+<style>
+:root{
+  --bg:#0d1117;--panel:#161b22;--border:#30363d;
+  --primary:#58a6ff;--success:#7ee787;--warning:#d29922;--danger:#f85149;
+  --text:#e6edf3;--text-dim:#8b949e;--accent:#d2a8ff;
+  --font-code:'Fira Code','Cascadia Code','Consolas',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-code);overflow:hidden}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;opacity:0;transform:scale(0.98);transition:opacity .4s,transform .4s;pointer-events:none}
+.screen.active{opacity:1;transform:scale(1);pointer-events:auto}
+h1{font-size:22px;margin-bottom:8px}
+h2{font-size:16px;color:var(--primary);margin-bottom:16px}
+p{color:var(--text-dim);font-size:13px;line-height:1.7;max-width:560px;text-align:center;margin-bottom:8px}
+.btn{
+  display:inline-block;background:transparent;border:1px solid var(--primary);color:var(--primary);
+  padding:10px 24px;font-family:var(--font-code);font-size:13px;cursor:pointer;
+  transition:all .2s;margin-top:16px;letter-spacing:1px
+}
+.btn:hover{background:rgba(88,166,255,0.1);box-shadow:0 0 12px rgba(88,166,255,0.2)}
+.btn:active{transform:scale(0.97)}
+.btn.green{border-color:var(--success);color:var(--success)}
+.btn.danger{border-color:var(--danger);color:var(--danger)}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+
+/* IDE */
+.ide{
+  background:var(--panel);border:1px solid var(--border);border-radius:6px;
+  max-width:640px;width:90%;min-height:200px;padding:12px;overflow:auto;
+  font-size:14px;line-height:1.8;position:relative;margin:12px 0
+}
+.ide-line{display:flex;align-items:flex-start;min-height:26px}
+.line-num{color:var(--text-dim);font-size:11px;width:28px;text-align:right;margin-right:12px;user-select:none;flex-shrink:0;line-height:1.8}
+.line-content{flex:1;outline:none;white-space:pre;min-height:24px;font-family:var(--font-code);font-size:14px;line-height:1.8}
+.line-content:empty::before{content:attr(data-placeholder);color:var(--text-dim)}
+.line-content.correct{color:var(--success)}
+.line-content.wrong{color:var(--danger)}
+.line-content.given{color:var(--text-dim)}
+
+/* Terminal */
+.terminal{
+  background:#0d1117;border:1px solid var(--border);border-radius:6px;
+  max-width:640px;width:90%;min-height:36px;padding:8px 14px;
+  font-size:12px;color:var(--text-dim);margin-top:8px;
+  font-family:var(--font-code);white-space:pre-wrap
+}
+.terminal.success{border-color:var(--success);color:var(--success)}
+.terminal.error{border-color:var(--danger);color:var(--danger)}
+
+/* Difficulty bar */
+.diff-bar{display:flex;gap:8px;margin-top:8px}
+.diff-btn{
+  background:transparent;border:1px solid var(--border);color:var(--text-dim);
+  padding:4px 10px;font-size:11px;font-family:var(--font-code);cursor:pointer
+}
+.diff-btn.active{border-color:var(--primary);color:var(--primary)}
+.diff-btn:disabled{opacity:.3;cursor:not-allowed}
+
+/* Hint */
+.hint-bar{display:flex;gap:8px;margin-top:8px}
+.hint-btn{
+  background:transparent;border:1px solid var(--border);color:var(--text-dim);
+  padding:4px 10px;font-size:11px;font-family:var(--font-code);cursor:pointer
+}
+.hint-btn:hover{color:var(--text);border-color:var(--text-dim)}
+.hint-btn:disabled{opacity:.3;cursor:not-allowed}
+
+.score-bar{position:absolute;top:12px;right:16px;font-size:12px;color:var(--text-dim)}
+</style>
+</head>
+<body>
+
+<div id="screen-title" class="screen active">
+  <h1>{{TITLE}}</h1>
+  <h2>{{SUBTITLE}}</h2>
+  <p>{{OPENING_HOOK}}</p>
+  <button class="btn" onclick="showScreen('howto')">开始挑战</button>
+</div>
+
+<div id="screen-howto" class="screen">
+  <p>{{HOWTO_TEXT}}</p>
+  <button class="btn" onclick="showScreen('game');initGame()">开始挑战</button>
+</div>
+
+<div id="screen-game" class="screen">
+  <div class="score-bar">得分: <span id="score">0</span> | 行: <span id="correctLines">0</span>/<span id="totalLines">0</span></div>
+  <div class="diff-bar" id="diffBar">
+    <button class="diff-btn active" onclick="setLevel(1)">L1 骨架70%</button>
+    <button class="diff-btn" onclick="setLevel(2)">L2 骨架30%</button>
+    <button class="diff-btn" onclick="setLevel(3)">L3 裸写</button>
+  </div>
+  <div class="ide" id="ide"></div>
+  <div class="terminal" id="terminal">>>> 按 Enter 逐行校验，Tab 缩进</div>
+  <div class="hint-bar" id="hintBar"></div>
+  <button class="btn green" onclick="checkAllLines()" style="margin-top:8px">提交验证</button>
+</div>
+
+<div id="screen-result" class="screen">
+  <div style="font-size:48px;margin-bottom:12px" id="resultIcon"></div>
+  <h2 id="resultTitle"></h2>
+  <p id="resultMsg"></p>
+  <button class="btn green" onclick="showScreen('history')">📜 查看知识点</button>
+  <button class="btn" onclick="resetGame()" style="margin-top:8px">再来一次</button>
+</div>
+
+<div id="screen-history" class="screen">
+  <h1>{{HISTORY_TITLE}}</h1>
+  <p style="text-align:left;font-size:14px;line-height:1.9">{{HISTORY_STORY}}</p>
+  <p style="margin-top:12px;color:var(--success)">▸ {{KEY_POINT}}</p>
+  <p style="color:var(--text-dim);font-size:12px;margin-top:8px">◈ {{FUN_FACT}}</p>
+  <button class="btn green" onclick="resetGame()">再来一次</button>
+</div>
+
+<script>
+const PUZZLE_DATA = {{PUZZLE_DATA_JSON}};
+const RECITE_CONFIG = {{RECITE_CONFIG_JSON}};
+const FULL_CODE = `{{FULL_CODE}}`;
+const HISTORY = {{HISTORY_JSON}};
+
+const PY_KEYWORDS = new Set([
+  'def','class','return','if','else','elif','for','while','in','with','as','import','from',
+  'yield','try','except','finally','raise','pass','break','continue','and','or','not','is',
+  'True','False','None','self','lambda','global','nonlocal','assert','del'
+]);
+const PY_BUILTINS = new Set(['print','range','len','next','iter','open','int','str','list','dict','set','tuple','bool','float','type','enumerate','zip','map','filter','sorted','reversed','abs','min','max','sum','any','all','isinstance','hasattr','getattr','setattr','super','input','round','pow','divmod','chr','ord','hex','oct','bin','format']);
+
+const gameState = {screen:'title',level:1,score:0,lines:[],totalLines:0,correctLines:0,hintsUsed:0};
+const STRUCT_PATTERNS = [
+  {re:/def\s+\w+\s*\([^)]*\)\s*:/,name:'函数定义 def xxx():'},
+  {re:/class\s+\w+/,name:'类定义 class'},
+  {re:/for\s+\w+\s+in/,name:'for 循环'},
+  {re:/yield\s+/,name:'yield 关键字'},
+  {re:/@\w+/,name:'装饰器 @'},
+  {re:/with\s+.*\s+as/,name:'with 语句'},
+  {re:/return\s+/,name:'return 语句'},
+];
+
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  gameState.screen=name;
+}
+
+// === SKELETON GENERATOR ===
+function generateSkeleton(level){
+  const code = FULL_CODE;
+  const preserveKw = RECITE_CONFIG.preserve_keywords || [];
+  const preserveBi = RECITE_CONFIG.preserve_builtins || [];
+  const lines = code.trim().split('\n');
+  return lines.map(line => {
+    const trimmed = line.trim();
+    if(!trimmed) return {text:'',editable:false};
+    // Parse tokens
+    const tokens = trimmed.split(/(\s+|[\(\)\[\]\{\}\.,:;=@'"])/g).filter(t=>t.length>0);
+    let result = [];
+    for(const t of tokens){
+      if(/^\s+$/.test(t) || /^[\(\)\[\]\{\}\.,:;=@'"]$/.test(t)){
+        result.push({text:t,editable:false});
+      }else if(PY_KEYWORDS.has(t) || preserveKw.includes(t)){
+        result.push({text:level===3?'___':t,editable:level===3,original:t});
+      }else if(PY_BUILTINS.has(t) || preserveBi.includes(t)){
+        result.push({text:level>=2?'___':t,editable:level>=2,original:t});
+      }else{
+        result.push({text:level>=2?'___':t,editable:level>=2,original:t});
+      }
+    }
+    return {tokens:result,editable:result.some(r=>r.editable),original:trimmed};
+  });
+}
+
+// === GAME INIT ===
+function initGame(){
+  gameState.score=0;gameState.hintsUsed=0;gameState.correctLines=0;
+  document.getElementById('score').textContent='0';
+  renderIDE();
+  // Hint buttons
+  const hb=document.getElementById('hintBar');hb.innerHTML='';
+  (PUZZLE_DATA.hints||[]).forEach((h,i)=>{
+    const b=document.createElement('button');b.className='hint-btn';
+    b.textContent='提示'+(i+1);b.onclick=()=>useHint(i);hb.appendChild(b);
+  });
+}
+
+function useHint(level){
+  const h=PUZZLE_DATA.hints[level];
+  if(!h||gameState.hintsUsed>level)return;
+  gameState.hintsUsed=level+1;
+  gameState.score-=10;
+  document.getElementById('score').textContent=gameState.score;
+  document.getElementById('terminal').textContent='💡 '+h.text;
+  document.getElementById('terminal').className='terminal';
+}
+
+let currentSkeleton=[];
+
+function renderIDE(){
+  currentSkeleton=generateSkeleton(gameState.level);
+  const ide=document.getElementById('ide');ide.innerHTML='';
+  gameState.totalLines=0;
+  currentSkeleton.forEach((line,i)=>{
+    if(!line.tokens)return;
+    gameState.totalLines++;
+    const div=document.createElement('div');div.className='ide-line';
+    const num=document.createElement('span');num.className='line-num';num.textContent=i+1;div.appendChild(num);
+    const content=document.createElement('div');content.className='line-content';
+    content.contentEditable=line.editable?'true':'false';
+    content.setAttribute('data-line',i);
+    if(!line.editable)content.classList.add('given');
+    // Render tokens
+    if(line.tokens){
+      content.innerHTML=line.tokens.map(t=>{
+        if(t.editable) return '<span class="blank-slot" data-original="'+t.original+'">___</span>';
+        const cls=PY_KEYWORDS.has(t.text)?'kw':PY_BUILTINS.has(t.text)?'accent':'';
+        return cls?`<span class="${cls}">${t.text}</span>`:t.text;
+      }).join('');
+    }
+    content.addEventListener('keydown',onLineKeydown);
+    div.appendChild(content);ide.appendChild(div);
+  });
+  document.getElementById('totalLines').textContent=gameState.totalLines;
+  document.getElementById('correctLines').textContent='0';
+  document.getElementById('terminal').textContent='>>> L'+gameState.level+' 模式，按 Enter 逐行校验';
+  document.getElementById('terminal').className='terminal';
+}
+
+function setLevel(l){
+  gameState.level=l;
+  document.querySelectorAll('.diff-btn').forEach((b,i)=>b.classList.toggle('active',i+1===l));
+  renderIDE();
+}
+
+function onLineKeydown(e){
+  if(e.key==='Enter'){e.preventDefault();checkLine(this);}
+  if(e.key==='Tab'){e.preventDefault();document.execCommand('insertText',false,'  ');}
+}
+
+function checkLine(el){
+  const lineIdx=parseInt(el.getAttribute('data-line'));
+  const skeleton=currentSkeleton[lineIdx];
+  if(!skeleton||!skeleton.tokens)return;
+  const userText=el.textContent.trim();
+  // Check required keywords exist
+  const missingKw=[];
+  for(const kw of RECITE_CONFIG.preserve_keywords||[]){
+    if(!userText.includes(kw))missingKw.push(kw);
+  }
+  // Check structural patterns
+  let structOK=true;
+  const orig=skeleton.original;
+  for(const p of STRUCT_PATTERNS){
+    if(p.re.test(orig)&&!p.re.test(userText)){structOK=false;break;}
+  }
+  if(missingKw.length>0){
+    el.classList.add('wrong');
+    document.getElementById('terminal').textContent='❌ 缺少关键字: '+missingKw.join(', ');
+    document.getElementById('terminal').className='terminal error';
+  }else if(!structOK){
+    el.classList.add('wrong');
+    document.getElementById('terminal').textContent='⚠️ 结构不匹配，检查语法';
+    document.getElementById('terminal').className='terminal error';
+  }else if(userText===skeleton.original){
+    el.classList.add('correct');
+    gameState.correctLines++;gameState.score+=Math.floor(200/(currentSkeleton.length||1));
+    document.getElementById('correctLines').textContent=gameState.correctLines;
+    document.getElementById('score').textContent=gameState.score;
+    document.getElementById('terminal').textContent='>>> 第'+(lineIdx+1)+'行 ✓ 正确';
+    document.getElementById('terminal').className='terminal success';
+    if(gameState.correctLines>=gameState.totalLines)setTimeout(()=>showResult(true),500);
+  }else{
+    document.getElementById('terminal').textContent='⚠️ 接近正确，再检查一下';
+    document.getElementById('terminal').className='terminal';
+  }
+}
+
+function checkAllLines(){
+  const lines=document.querySelectorAll('.line-content[contenteditable="true"]');
+  lines.forEach(el=>checkLine(el));
+}
+
+function showResult(won){
+  document.getElementById('resultIcon').textContent=won?'🎉':'💀';
+  document.getElementById('resultTitle').textContent=won?'{{VICTORY_LINE}}':'{{DEFEAT_LINE}}';
+  document.getElementById('resultMsg').textContent=won?('得分:'+gameState.score):'继续练习！得分:'+gameState.score;
+  showScreen('result');
+}
+
+function resetGame(){gameState.level=1;renderIDE();showScreen('title');initGame();}
+</script>
+</body>
+</html>

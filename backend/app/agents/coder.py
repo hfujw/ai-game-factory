@@ -107,42 +107,78 @@ SYSTEM_PROMPT = """你是一个"时间工匠"——将历史事件转化为可�
 
 def _fill_blank_from_skeleton(state, search_results, script_data) -> dict:
     """用 fill_blank 骨架模板 + 数据填充，零 LLM 调用。"""
-    import os
-    skeleton_path = os.path.join(os.path.dirname(__file__), "..", "templates", "skeleton_fill_blank.html")
-    with open(skeleton_path, "r", encoding="utf-8") as f:
-        skeleton = f.read()
-
-    # 提取 puzzle_guide
-    puzzle_guide = {}
-    for r in search_results:
-        if r.get("puzzle_guide"):
-            puzzle_guide = r["puzzle_guide"]
-            break
-
+    import json
+    skeleton = _load_skeleton("fill_blank")
+    pg = _extract_puzzle_guide(search_results)
     facts = script_data.get("history_facts", {})
-    if isinstance(facts, list):
-        facts = {"title": "", "story": "", "key_point": "", "fun_fact": ""}
+    if isinstance(facts, list): facts = {"title":"","story":"","key_point":"","fun_fact":""}
+    html = _fill_common(skeleton, script_data, pg, facts)
+    html = html.replace("{{MAX_ATTEMPTS}}", str(pg.get("scoring", {}).get("base_score", 100) // 30 if pg.get("scoring") else 3))
+    html = html.replace("{{PUZZLE_DATA_JSON}}", json.dumps(pg, ensure_ascii=False))
+    html = html.replace("{{HISTORY_JSON}}", json.dumps(facts, ensure_ascii=False))
+    return {"game_code": html, "agent_logs": [agent_log("coder", "skeleton_filled", f"fill_blank from skeleton, {len(html)} chars")]}
 
-    # 填充占位符
+
+def _load_skeleton(name: str) -> str:
+    import os
+    path = os.path.join(os.path.dirname(__file__), "..", "templates", f"skeleton_{name}.html")
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+def _extract_puzzle_guide(search_results):
+    for r in search_results:
+        if r.get("puzzle_guide"): return r["puzzle_guide"]
+    return {}
+
+def _fill_common(skeleton, script_data, puzzle_guide, facts):
     html = skeleton
     html = html.replace("{{TITLE}}", script_data.get("event", "Python 面试题"))
-    html = html.replace("{{SUBTITLE}}", f'难度 {"★"*script_data.get("year",1)}{"☆"*(4-script_data.get("year",1))}')
-    html = html.replace("{{OPENING_HOOK}}", script_data.get("opening_hook", "你能填对这段代码吗？"))
-    html = html.replace("{{HOWTO_TEXT}}", "点击代码中的 ___ 空位，输入正确答案后按 Enter。填对所有空位即可通关。")
-    html = html.replace("{{MAX_ATTEMPTS}}", str(puzzle_guide.get("scoring", {}).get("base_score", 100) // 30 if puzzle_guide.get("scoring") else 3))
-    html = html.replace("{{PUZZLE_DATA_JSON}}", json.dumps(puzzle_guide, ensure_ascii=False))
-    html = html.replace("{{HISTORY_JSON}}", json.dumps(facts, ensure_ascii=False))
+    difficulty = script_data.get("year", 1)
+    html = html.replace("{{SUBTITLE}}", f'难度 {"★"*min(difficulty,4)}{"☆"*max(0,4-difficulty)}')
+    html = html.replace("{{OPENING_HOOK}}", script_data.get("opening_hook", ""))
+    html = html.replace("{{HOWTO_TEXT}}", script_data.get("puzzle", {}).get("surface", "按照提示完成挑战即可通关。"))
     html = html.replace("{{HISTORY_TITLE}}", facts.get("title", "知识点"))
     html = html.replace("{{HISTORY_STORY}}", facts.get("story", ""))
     html = html.replace("{{KEY_POINT}}", facts.get("key_point", ""))
     html = html.replace("{{FUN_FACT}}", facts.get("fun_fact", ""))
     html = html.replace("{{VICTORY_LINE}}", script_data.get("victory_line", "Process finished with exit code 0"))
     html = html.replace("{{DEFEAT_LINE}}", script_data.get("defeat_line", "NameError: knowledge not defined"))
+    return html
 
-    return {
-        "game_code": html,
-        "agent_logs": [agent_log("coder", "skeleton_filled", f"fill_blank from skeleton, {len(html)} chars")],
-    }
+def _recite_from_skeleton(state, search_results, script_data) -> dict:
+    import json
+    skeleton = _load_skeleton("recite")
+    pg = _extract_puzzle_guide(search_results)
+    facts = script_data.get("history_facts", {}) or {}
+    html = _fill_common(skeleton, script_data, pg, facts)
+    html = html.replace("{{PUZZLE_DATA_JSON}}", json.dumps(pg, ensure_ascii=False))
+    html = html.replace("{{RECITE_CONFIG_JSON}}", json.dumps(pg.get("recite_config", {}), ensure_ascii=False))
+    html = html.replace("{{FULL_CODE}}", (script_data.get("content", {}) or {}).get("original", ""))
+    html = html.replace("{{HISTORY_JSON}}", json.dumps(facts, ensure_ascii=False))
+    return {"game_code": html, "agent_logs": [agent_log("coder", "skeleton_filled", f"recite from skeleton, {len(html)} chars")]}
+
+def _match_from_skeleton(state, search_results, script_data) -> dict:
+    import json
+    skeleton = _load_skeleton("match")
+    pg = _extract_puzzle_guide(search_results)
+    facts = script_data.get("history_facts", {}) or {}
+    html = _fill_common(skeleton, script_data, pg, facts)
+    html = html.replace("{{MATCH_PAIRS_JSON}}", json.dumps(pg.get("match_pairs", []), ensure_ascii=False))
+    html = html.replace("{{HISTORY_JSON}}", json.dumps(facts, ensure_ascii=False))
+    return {"game_code": html, "agent_logs": [agent_log("coder", "skeleton_filled", f"match from skeleton, {len(html)} chars")]}
+
+def _debugger_from_skeleton(state, search_results, script_data) -> dict:
+    import json
+    skeleton = _load_skeleton("debugger")
+    pg = _extract_puzzle_guide(search_results)
+    facts = script_data.get("history_facts", {}) or {}
+    html = _fill_common(skeleton, script_data, pg, facts)
+    # inject full bug code for display
+    bug_info = pg.get("bug_info", {})
+    bug_info["code"] = (script_data.get("content", {}) or {}).get("original", "")
+    html = html.replace("{{BUG_INFO_JSON}}", json.dumps(bug_info, ensure_ascii=False))
+    html = html.replace("{{HISTORY_JSON}}", json.dumps(facts, ensure_ascii=False))
+    return {"game_code": html, "agent_logs": [agent_log("coder", "skeleton_filled", f"debugger from skeleton, {len(html)} chars")]}
 
 
 def get_puzzle_meaning(puzzle_type: str, event: str, protagonist: str) -> str:
@@ -166,9 +202,15 @@ def coder_node(state: GameFactoryState) -> dict:
     review_feedback = state.get("review_feedback", "")
     search_results = state.get("search_results", [])
 
-    # === fill_blank 骨架模板路径（零 LLM）===
+    # === 骨架模板路径（零 LLM）===
     if puzzle_type == "fill_blank":
         return _fill_blank_from_skeleton(state, search_results, script_data)
+    if puzzle_type == "recite":
+        return _recite_from_skeleton(state, search_results, script_data)
+    if puzzle_type == "match":
+        return _match_from_skeleton(state, search_results, script_data)
+    if puzzle_type == "debugger":
+        return _debugger_from_skeleton(state, search_results, script_data)
 
     # 八股类型 → 使用对应交互模板
     is_bagu = puzzle_type in BAGU_TEMPLATES
