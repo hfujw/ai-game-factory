@@ -35,6 +35,8 @@ class GameFactoryState(TypedDict):
     search_results: List[dict]
     material_score: float
     material_sufficient: bool
+    suggested_type: str
+    reasoning_chain: List[str]
 
     # === 策划 Agent 产出 ===
     puzzle_type: str
@@ -54,11 +56,13 @@ class GameFactoryState(TypedDict):
     review_feedback: str
     review_details: dict
     retry_count: int
+    review_history: Annotated[List[dict], operator.add]
 
     # === 美术 Agent 产出 ===
     directions: list           # artist_pre 产出的 2 个视觉方向
     selected_direction: dict   # 关键词匹配选定的方向
     styled_code: str           # artist_post 产出的最终 HTML
+    orchestrator_notes: str    # 协调 Agent 给下游的备注
 
     # === 元数据 ===
     status: str
@@ -77,6 +81,8 @@ def initial_state(user_input: str) -> GameFactoryState:
         search_results=[],
         material_score=0.0,
         material_sufficient=False,
+        suggested_type="",
+        reasoning_chain=[],
         game_script="",
         script_data={},
         game_design_doc=None,
@@ -86,9 +92,11 @@ def initial_state(user_input: str) -> GameFactoryState:
         review_feedback="",
         review_details={},
         retry_count=0,
+        review_history=[],
         directions=[],
         selected_direction={},
         styled_code="",
+        orchestrator_notes="",
         status="running",
         error_message="",
         suggestions=[],

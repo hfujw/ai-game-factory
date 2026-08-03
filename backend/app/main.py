@@ -50,7 +50,7 @@ async def get_cost():
 
 @app.get("/api/events")
 async def list_events(category: str = None):
-    """返回知识库事件列表。category 可选 'computer_history' / 'bagu' / 不传=全部。"""
+    """返回示例话题列表。category 可选过滤：'computer_history' / 'bagu' / 不传=全部。"""
     events = get_all_events(category=category if category else None)
     result = []
     for e in events:
@@ -60,7 +60,6 @@ async def list_events(category: str = None):
             "name": name,
             "category": e.get("category", "computer_history"),
             "difficulty": difficulty,
-            "type": e.get("puzzle_guide", {}).get("type", "unknown") if category == "bagu" else "",
         })
     return {"events": result, "total": len(result)}
 
@@ -77,7 +76,7 @@ async def generate_game(websocket: WebSocket):
         user_input = data.get("event", "").strip()
 
         if not user_input:
-            await ws_manager.send_failed(session_id, "请输入一个计算机历史事件", [])
+            await ws_manager.send_failed(session_id, "请输入一个主题", [])
             return
 
         # 通知前端开始
@@ -97,6 +96,7 @@ async def generate_game(websocket: WebSocket):
             "crawler": "爬虫Agent",
             "writer": "文案Agent",
             "artist_pre": "美术设计Agent",
+            "orchestrator": "协调Agent",
             "coder": "程序Agent",
             "reviewer": "审查Agent",
             "artist_post": "美术渲染Agent",
@@ -149,15 +149,14 @@ async def generate_game(websocket: WebSocket):
                         else f"{AGENT_NAMES.get(node_name, node_name)} 完成 ✓",
                     )
 
-                    # 推送 agent_log（决策理由可见化）
+                    # 推送全部 agent_log（AI 思考过程可见化）
                     agent_logs = output.get("agent_logs", [])
-                    if agent_logs:
-                        last_log = agent_logs[-1]
+                    for log in agent_logs:
                         await ws_manager.send_json(session_id, {
                             "type": "agent_log",
-                            "agent": node_name,
-                            "action": last_log.get("action", ""),
-                            "detail": last_log.get("detail", ""),
+                            "agent": log.get("agent") or node_name,
+                            "action": log.get("action", ""),
+                            "detail": log.get("detail", ""),
                         })
 
                     prev_node = node_name

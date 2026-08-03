@@ -1,13 +1,10 @@
-"""文案 Agent — 输出结构化 GameScript JSON。
-
-下游 coder/artist 按字段消费，不再从散文里猜信息。
-"""
+"""文案 Agent — 输出结构化 GameScript JSON（通用版）"""
 
 import json
 from app.graph.state import GameFactoryState
 from app.llm_client import chat, _strip_markdown_fence, agent_log
 
-SYSTEM_PROMPT = """你是一个历史教育像素游戏的编剧。
+SYSTEM_PROMPT = """你是一个解谜小游戏的编剧。
 
 你的唯一产出是一个严格的 JSON 对象。下游有 2 个 Agent 消费你的输出：
 - coder_agent：读 puzzle、history_facts、victory_line、defeat_line、opening_hook
@@ -22,11 +19,11 @@ SYSTEM_PROMPT = """你是一个历史教育像素游戏的编剧。
   "antagonist": "对抗方",
   "core_conflict": "一句话冲突悬念",
   "atmosphere": "氛围关键词，逗号分隔",
-  "opening_hook": "标题画面显示的悬念句，让玩家想点开始",
+  "opening_hook": "标题画面显示的悬念句",
 
   "puzzle": {
     "type": "cipher|sequence|logic",
-    "surface": "谜题表皮——玩家看到的场景描述，如'一封截获的德军密电'",
+    "surface": "谜题表皮",
     "answer": "正确答案",
     "items_count": 排序类元素数量,
     "items_labels": ["标签1","标签2"],
@@ -39,94 +36,38 @@ SYSTEM_PROMPT = """你是一个历史教育像素游戏的编剧。
   },
 
   "history_facts": {
-    "title": "一段吸引人的小标题，如'一台机器如何改变战争走向'",
-    "story": "200-300字的历史小故事。用口语化、有画面感的语言讲述。包含具体的人物、场景、细节、趣闻。像朋友聊天一样，让人读完能随口讲给别人听。不要教科书腔。",
-    "key_point": "一句话核心收获——读者读完能记住的东西",
-    "fun_fact": "一条鲜为人知的趣闻"
+    "title": "小标题",
+    "story": "200-300字口语化故事",
+    "key_point": "一句话核心收获",
+    "fun_fact": "趣闻"
   },
 
-  "victory_line": "像素风通关台词，简短有力",
-  "defeat_line": "像素风失败鼓励台词，简短",
+  "victory_line": "通关台词",
+  "defeat_line": "失败台词",
 
   "visual": {
     "palette": ["#0d0a08","#e8702a","#34d399","#e8ddd0","#5a4a3a"],
     "mood": "视觉情绪描述",
-    "decorations": ["装饰元素1","装饰元素2"]
+    "decorations": ["装饰元素"]
   }
 }
 
 【铁律】
 - 必须输出合法 JSON，不要 markdown 包裹，不要注释
-- puzzle.hints 必须 3 条，level 1→2→3 从模糊到直接
-- history_facts.story 必须 200-300 字，口语化有画面感，像朋友聊天讲故事
+- puzzle.hints 必须 3 条
+- history_facts.story 必须 200-300 字，口语化有画面感
 - victory_line 和 defeat_line 各不超过 20 字
 - atmosphere 字段优先使用史料中提供的 atmosphere_tags
 - visual.decorations 优先使用史料中提供的 key_props
-- visual.mood 优先参考史料中提供的 visual_anchor
-- 所有内容必须基于史料，不编造"""
-
-BAGU_SYSTEM_PROMPT = """你是一个 Python 面试教学游戏的编剧。
-
-你的唯一产出是一个严格的 JSON 对象。下游 Agent 消费你的输出。
-
-【输出格式——Python 八股专用】
-{
-  "event": "题目名（如'上下文管理器'）",
-  "year": 难度数字(1-4),
-  "protagonist": "考点（如'__enter__ / __exit__'）",
-  "antagonist": "常见误区",
-  "atmosphere": "终端,代码,IDE",
-  "opening_hook": "一句引人入胜的面试场景描述",
-
-  "puzzle": {
-    "type": "fill_blank|recite|match|debugger",
-    "surface": "代码场景描述",
-    "answer": "（从数据中获取，不要编造）",
-    "hints": [{"level":1,"text":"..."}, {"level":2,"text":"..."}, {"level":3,"text":"..."}],
-    "max_attempts": 3
-  },
-
-  "history_facts": {
-    "title": "知识点讲解",
-    "story": "200-300字口语化讲解，像面试官在给你讲题",
-    "key_point": "一句话核心考点",
-    "fun_fact": "面试官追问或延伸思考"
-  },
-
-  "victory_line": "Process finished with exit code 0",
-  "defeat_line": "NameError: knowledge not defined",
-
-  "visual": {
-    "palette": ["#0d1117","#58a6ff","#7ee787","#e6edf3","#30363d"],
-    "mood": "终端IDE",
-    "decorations": ["光标","代码高亮","行号"]
-  },
-
-  "content": {
-    "original": "完整代码（从史料复制）",
-    "translation": "代码解释",
-    "annotations": ["知识点1","知识点2"]
-  }
-}
-
-【铁律】
-- history_facts.story 必须 200-300 字口语化讲解
-- victory_line 用 Python 终端风格
-- content.original 从史料中复制完整代码，不要改编
-- 所有内容基于史料，不编造"""
+- 所有内容必须基于素材，不编造"""
 
 
 def writer_node(state: GameFactoryState) -> dict:
-    """基于史料 + 谜题机制 → LLM 输出结构化 GameScript JSON。"""
     user_input = state["user_input"]
     puzzle_type = state["puzzle_type"]
     puzzle_design = state.get("puzzle_design", {})
     search_results = state.get("search_results", [])
 
-    # 检测是否为八股类型
-    is_bagu = puzzle_type in ("fill_blank", "recite", "match", "debugger")
-
-    # 拼史料（story + 新字段）
     parts = []
     for r in search_results[:3]:
         title = r.get('title', '')
@@ -137,7 +78,6 @@ def writer_node(state: GameFactoryState) -> dict:
             block += story
         elif facts:
             block += "; ".join(facts)
-        # V4: 附加美术/氛围数据
         if r.get("atmosphere_tags"):
             block += f"\n氛围标签：{'、'.join(r['atmosphere_tags'])}"
         if r.get("key_props"):
@@ -147,23 +87,21 @@ def writer_node(state: GameFactoryState) -> dict:
         parts.append(block)
     sources_text = "\n\n".join(parts)
 
-    prompt = f"""历史事件：{user_input}
+    prompt = f"""主题：{user_input}
 谜题类型：{puzzle_type}
 谜题机制：{puzzle_design.get('mechanic', '')}
 规则：{puzzle_design.get('rules', '')}
 
-史料：
+素材：
 {sources_text if sources_text else '（使用你的知识）'}
 
 请输出完整 GameScript JSON。puzzle.type 必须是 {puzzle_type}。"""
 
     try:
-        system = BAGU_SYSTEM_PROMPT if is_bagu else SYSTEM_PROMPT
-        raw = chat(prompt, system=system, temperature=0.5)
+        raw = chat(prompt, system=SYSTEM_PROMPT, temperature=0.5)
         cleaned = _strip_markdown_fence(raw)
         script = json.loads(cleaned)
 
-        # 确保必填字段存在
         if "puzzle" not in script:
             script["puzzle"] = {}
         script["puzzle"]["type"] = puzzle_type
@@ -177,14 +115,13 @@ def writer_node(state: GameFactoryState) -> dict:
             ]
 
         return {
-            "game_script": json.dumps(script, ensure_ascii=False),  # 存为 JSON 字符串，兼容 state
-            "script_data": script,  # 结构化数据，coder 可以直接读
+            "game_script": json.dumps(script, ensure_ascii=False),
+            "script_data": script,
             "script_keywords": [user_input, puzzle_type],
             "agent_logs": [agent_log("writer", "script_written",
-                           f"topic={script.get('event',user_input)}, chars={len(raw)}")],
+                           f"topic={script.get('event', user_input)}, chars={len(raw)}")],
         }
     except Exception as e:
-        # JSON 解析失败 → 回退到纯文本，但标记给 coder
         fallback = {
             "event": user_input,
             "puzzle": {
@@ -199,9 +136,9 @@ def writer_node(state: GameFactoryState) -> dict:
                 "max_attempts": 3,
             },
             "history_facts": {
-                "title": "关于这个事件",
-                "story": "（史料解析失败，请使用剧本中的历史信息）",
-                "key_point": "每个技术突破背后都有一个有趣的故事。",
+                "title": "关于这个主题",
+                "story": "（素材解析失败）",
+                "key_point": "每个主题背后都有一个有趣的故事。",
                 "fun_fact": "",
             },
             "victory_line": "你成功了！",

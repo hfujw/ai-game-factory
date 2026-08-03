@@ -1,162 +1,73 @@
-"""Artist Pre-Processing Agent V4"""
+"""Artist Pre — LLM 自主视觉设计。
 
-import hashlib
+删除所有硬编码方向。让 LLM 读剧本，自主生成 3 个视觉方向并论证选择。
+极简 fallback 防止 LLM 崩溃。
+"""
+
 import json
-import re
 from app.llm_client import agent_log, chat, _strip_markdown_fence
 
-# 情绪同义词表
-MOOD_SYNONYMS = {
-    "紧张": ["紧张", "焦虑", "紧迫", "危急", "压迫", "窒息", "激烈", "惊悚", "紧绷"],
-    "理智": ["理智", "冷静", "理性", "逻辑", "清晰", "沉着", "分析", "推演", "计算"],
-    "悬疑": ["悬疑", "神秘", "未知", "迷雾", "阴谋", "暗涌", "诡谲", "谜团"],
-    "悲壮": ["悲壮", "沉重", "牺牲", "史诗", "宏大", "苍凉", "壮烈", "挽歌"],
-    "浪漫": ["浪漫", "诗意", "温暖", "怀旧", "柔情", "抒情", "感伤", "优美"],
-    "机械": ["机械", "工业", "齿轮", "蒸汽", "硬核", "精密", "冰冷", "金属"],
-    "自然": ["自然", "生机", "苔藓", "森林", "有机", "生长", "野性", "原始"],
+DEFAULT_FALLBACK = {
+    "name": "默认像素", "mood_tags": ["像素", "复古"],
+    "palette": ["#0a0a0a", "#e8702a", "#34d399", "#e8ddd0", "#5a4a3a"],
+    "ui": "像素风格基础UI", "animation": "基础淡入淡出",
+    "reference_css": "body{background:#0a0a0a;color:#e8ddd0;font-family:monospace}",
+    "post": {"crt": False, "particles": "none", "atmosphere": ""}
 }
 
 SYSTEM_PROMPT = """你是一个像素风 HTML 游戏的视觉设计师。
 
-基于输入的剧本，生成 2 个不同的视觉设计方向。
+基于剧本，自主分析氛围和情绪，生成 3 个不同的视觉设计方向。
 
-输出 JSON 格式（不要 markdown 代码块）：
+每个方向必须说明：
+1. 名称 + 与剧本氛围的关联性（引用剧本具体描述）
+2. 色板（5个色值）、UI风格（3句话）、动画节奏（1句话）、参考CSS（3-5行）
+3. 自评选择最佳方向，说明理由
+
+JSON格式：
 {
   "directions": [
-    {
-      "name": "方向名",
-      "mood_tags": ["紧张"],
-      "palette": ["#0a0a0a", "#e8702a", "#34d399", "#e8ddd0", "#5a4a3a"],
-      "ui": "3句话描述UI风格",
-      "animation": "1句话描述动画节奏",
-      "reference_css": "3-5行核心CSS",
-      "post": {"crt": true, "particles": "ember", "atmosphere": "body::after{...}"}
-    }
-  ]
+    {"name":"...","mood_tags":["..."],"palette":[...],"ui":"...","animation":"...","reference_css":"...","post":{"crt":bool,"particles":"...","atmosphere":"..."}}
+  ],
+  "selected_index": 0,
+  "selection_reasoning": "为什么选这个（引用剧本细节）"
 }
 
-硬性要求：
-1. 每个 puzzle_type 输出 2 个方向
-2. 方向在"交互隐喻、动画节奏、UI形状"上明显不同
-3. mood_tags 只写 1-2 个核心词
-4. palette 5 个色值，对齐主题
-5. reference_css 只要 3-5 行
-6. post.atmosphere 是一段完整 CSS"""
-
-
-def expand_mood_tags(tags):
-    expanded = set()
-    for tag in tags:
-        expanded.add(tag)
-        if tag in MOOD_SYNONYMS:
-            expanded.update(MOOD_SYNONYMS[tag])
-    return expanded
-
-
-def calculate_mood_score(direction, mood_text, atmosphere_text):
-    combined = (mood_text + " " + atmosphere_text).lower()
-    tags = expand_mood_tags(direction.get("mood_tags", []))
-    return sum(1 for tag in tags if tag.lower() in combined)
-
-
-def select_direction(directions, script_data):
-    mood = script_data.get("mood", "")
-    atmo = script_data.get("atmosphere", "")
-    event = script_data.get("event", "")
-    scores = [(calculate_mood_score(d, mood, atmo), d) for d in directions]
-    scores.sort(key=lambda x: x[0], reverse=True)
-    if len(scores) == 1 or scores[0][0] > scores[1][0]:
-        return scores[0][1]
-    hash_val = int(hashlib.md5(event.encode()).hexdigest(), 16)
-    return directions[hash_val % len(directions)]
-
-
-def validate_directions(directions, puzzle_type):
-    if len(directions) != 2:
-        return False, f"期望2个方向，得到{len(directions)}个"
-    required = ["name", "mood_tags", "palette", "ui", "animation", "reference_css", "post"]
-    for i, d in enumerate(directions):
-        for key in required:
-            if key not in d:
-                return False, f"方向{i+1}缺少{key}"
-        if len(d.get("palette", [])) != 5:
-            return False, f"方向{i+1} palette不是5个色值"
-    return True, "ok"
-
-
-# 默认方向（fallback）
-DEFAULT_DIRECTIONS = {
-    "cipher": [
-        {"name": "战时密码室", "mood_tags": ["紧张"], "palette": ["#0a0a0a", "#e8702a", "#34d399", "#e8ddd0", "#5a4a3a"], "ui": "厚重2px边框方形按钮，暗角符文面板，凿刻凹槽输入框", "animation": "沉重机械感，顿挫节奏，错误时剧烈震动", "reference_css": ".rune{border:2px solid #e8702a;padding:14px 32px;font-size:13px;letter-spacing:3px}.panel{border-radius:2px;border:1px solid rgba(232,112,42,0.2)}", "post": {"crt": True, "particles": "ember", "atmosphere": "body::after{content:;position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);pointer-events:none;z-index:9999;}"}},
-        {"name": "密函工作室", "mood_tags": ["理智"], "palette": ["#0a0a0a", "#c4a574", "#34d399", "#e8ddd0", "#5a4a3a"], "ui": "不规则圆角纸张纹理按钮，火漆印面板，羽毛笔输入框", "animation": "轻柔纸张感，流畅滑动，像翻阅古老信件", "reference_css": ".rune{border:1px solid #c4a574;border-radius:12px 4px 12px 4px;padding:12px 28px}.panel{background:rgba(20,16,12,0.9);border:1px solid rgba(196,165,116,0.15)}", "post": {"crt": False, "particles": "dust", "atmosphere": "body::after{content:;position:fixed;inset:0;background:radial-gradient(circle at 80% 20%,rgba(196,165,116,0.03),transparent 50%);pointer-events:none;}"}}
-    ],
-    "sequence": [
-        {"name": "古典卷轴", "mood_tags": ["浪漫"], "palette": ["#0a0a0a", "#c4a574", "#34d399", "#e8ddd0", "#5a4a3a"], "ui": "8px大圆角羊皮纸纹理，火漆封边，拖拽时有纸张飘动感", "animation": "轻柔展开，像古老卷轴在时间中缓缓铺陈", "reference_css": ".rune{border:1px solid #c4a574;border-radius:8px;background:rgba(196,165,116,0.05)}.panel{border-radius:8px;border:1px solid rgba(196,165,116,0.12)}", "post": {"crt": False, "particles": "none", "atmosphere": "body::after{content:;position:fixed;inset:0;background:radial-gradient(ellipse at 50% 100%,rgba(196,165,116,0.04),transparent 60%);pointer-events:none;}"}},
-        {"name": "工业时间线", "mood_tags": ["机械"], "palette": ["#0a0a0a", "#e8702a", "#34d399", "#e8ddd0", "#5a4a3a"], "ui": "齿轮边框金属质感按钮，铆钉面板，咔哒作响的机械输入", "animation": "咔哒机械声，齿轮咬合感，每次操作有顿挫反馈", "reference_css": ".rune{border:1px solid #e8702a;border-radius:2px;box-shadow:inset 0 0 8px rgba(232,112,42,0.1)}.panel{border:1px solid rgba(232,112,42,0.15);background:linear-gradient(180deg,rgba(20,16,12,0.95),rgba(10,10,10,0.98))}", "post": {"crt": True, "particles": "ember", "atmosphere": "body::after{content:;position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);pointer-events:none;z-index:9999;}"}}
-    ],
-    "logic": [
-        {"name": "深空星图", "mood_tags": ["悬疑"], "palette": ["#0a0a1a", "#6366f1", "#34d399", "#e8ddd0", "#4a4a6a"], "ui": "菱形符文按钮，光线连线，罗盘方位选项，深空背景", "animation": "神秘缓慢，光线逐段绘制，像星图在黑暗中自显", "reference_css": ".rune{clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);padding:16px 24px;border:none;background:rgba(99,102,241,0.1)}.panel{border:1px solid rgba(99,102,241,0.15);background:rgba(10,10,26,0.92)}", "post": {"crt": False, "particles": "star", "atmosphere": "body::after{content:;position:fixed;inset:0;background:radial-gradient(circle at 50% 50%,rgba(99,102,241,0.05),transparent 70%);pointer-events:none;}"}},
-        {"name": "推演沙盘", "mood_tags": ["理智"], "palette": ["#0a0a0a", "#e8702a", "#34d399", "#e8ddd0", "#5a4a3a"], "ui": "几何网格方块按钮，沙盘质感面板，滑动式选项", "animation": "理性干脆，方块滑动对齐，正确时有清脆咬合感", "reference_css": ".rune{border:1px solid #5a4a3a;border-radius:2px;padding:12px 24px;font-size:14px}.panel{border:1px solid rgba(90,74,58,0.2);background:rgba(20,16,12,0.95)}", "post": {"crt": False, "particles": "none", "atmosphere": "body::after{content:;position:fixed;inset:0;background:linear-gradient(90deg,transparent 49%,rgba(90,74,58,0.03) 50%,transparent 51%);background-size:40px 100%;pointer-events:none;}"}}
-    ],
-    # Python 八股 — 终端 IDE 风格
-    "fill_blank": [
-        {"name": "VS Code 暗色", "mood_tags": ["终端", "代码"], "palette": ["#0d1117", "#58a6ff", "#7ee787", "#e6edf3", "#30363d"], "ui": "VS Code风格编辑器，行号灰色，关键字蓝色语法高亮，空位闪烁下划线", "animation": "代码填对时逐行变绿，终端输出模拟结果", "reference_css": "body{background:#0d1117;font-family:'Fira Code',monospace}.rune{border:1px solid #58a6ff;color:#58a6ff;font-size:13px}.panel{background:#161b22;border:1px solid #30363d}", "post": {"crt": False, "particles": "none", "atmosphere": ""}},
-        {"name": "终端绿屏", "mood_tags": ["终端", "代码"], "palette": ["#0d1117", "#7ee787", "#58a6ff", "#e6edf3", "#30363d"], "ui": "绿字终端风格，荧光绿代码，矩阵感光标", "animation": "绿色字符逐个打印，完成时屏幕闪烁", "reference_css": "body{background:#0d1117;font-family:'Fira Code',monospace;color:#7ee787}.rune{border:1px solid #7ee787;color:#7ee787}.panel{background:#161b22;border:1px solid #30363d}", "post": {"crt": True, "particles": "none", "atmosphere": ""}}
-    ],
-    "recite": [
-        {"name": "IDE 练习场", "mood_tags": ["终端", "代码"], "palette": ["#0d1117", "#58a6ff", "#7ee787", "#e6edf3", "#30363d"], "ui": "代码编辑器风格，行号+语法高亮+Tab缩进，难度三档切换", "animation": "正确行绿色高亮，错误行红色波浪线", "reference_css": "body{background:#0d1117;font-family:'Fira Code',monospace}.rune{font-size:13px}.panel{background:#161b22;border:1px solid #30363d}", "post": {"crt": False, "particles": "none", "atmosphere": ""}},
-        {"name": "极客终端", "mood_tags": ["终端", "代码"], "palette": ["#0d1117", "#7ee787", "#e6edf3", "#30363d", "#58a6ff"], "ui": "极简终端，只有光标和代码，无多余UI", "animation": "逐行显示，正确时终端输出 success", "reference_css": "body{background:#0d1117;color:#e6edf3;font-family:'Fira Code',monospace}.rune{border:1px solid #7ee787;color:#7ee787}.panel{background:#161b22;border:1px solid #30363d}", "post": {"crt": True, "particles": "none", "atmosphere": ""}},
-        {"name": "暗色黑板", "mood_tags": ["终端", "代码"], "palette": ["#1a1a2e", "#e94560", "#0f3460", "#e6edf3", "#16213e"], "ui": "黑板风格代码区，粉笔色关键字，擦除感光标", "animation": "正确行粉笔变白，错误行被擦除", "reference_css": "body{background:#1a1a2e;color:#e6edf3;font-family:'Fira Code',monospace}.rune{border:1px solid #e94560;color:#e94560}.panel{background:#16213e}", "post": {"crt": False, "particles": "chalk", "atmosphere": ""}}
-    ],
-    "match": [
-        {"name": "知识连线板", "mood_tags": ["终端", "代码"], "palette": ["#0d1117", "#58a6ff", "#7ee787", "#e6edf3", "#30363d"], "ui": "左右两栏卡片，SVG连线，正确绿线+错误红线抖动", "animation": "全部配对后电路板式点亮动画", "reference_css": "body{background:#0d1117;font-family:'Fira Code',monospace}.rune{font-size:13px}.panel{background:#161b22;border:1px solid #30363d}", "post": {"crt": False, "particles": "none", "atmosphere": ""}},
-        {"name": "概念星图", "mood_tags": ["终端", "代码"], "palette": ["#0d1117", "#6366f1", "#7ee787", "#e6edf3", "#30363d"], "ui": "概念节点+光线连接，像星图推演但偏理性", "animation": "连接正确时光线延伸，错误断裂", "reference_css": "body{background:#0d1117;font-family:'Fira Code',monospace}.rune{border:1px solid #6366f1;color:#6366f1}.panel{background:#161b22;border:1px solid #30363d}", "post": {"crt": False, "particles": "star", "atmosphere": ""}}
-    ],
-    "debugger": [
-        {"name": "调试控制台", "mood_tags": ["终端", "代码"], "palette": ["#0d1117", "#f85149", "#7ee787", "#e6edf3", "#30363d"], "ui": "VS Code调试视图，行号可点击，Bug高亮红色，控制台报错显示", "animation": "定位正确时Bug图标碎裂变绿勾", "reference_css": "body{background:#0d1117;font-family:'Fira Code',monospace}.rune{border:1px solid #f85149;color:#f85149;font-size:13px}.panel{background:#161b22;border:1px solid #30363d}", "post": {"crt": False, "particles": "none", "atmosphere": ""}},
-        {"name": "X-Ray 扫描", "mood_tags": ["终端", "代码"], "palette": ["#0d1117", "#d29922", "#7ee787", "#e6edf3", "#30363d"], "ui": "X光扫描风格，问题代码黄色高亮，正确修复绿色透明叠加", "animation": "扫描线自上而下扫过代码，发现bug时停顿变红", "reference_css": "body{background:#0d1117;font-family:'Fira Code',monospace}.rune{border:1px solid #d29922;color:#d29922}.panel{background:#161b22;border:1px solid #30363d}", "post": {"crt": True, "particles": "scan", "atmosphere": ""}}
-    ]
-}
+要求：3个方向，在交互隐喻/动画节奏/UI形状上明显不同。不要markdown代码块。"""
 
 
 def artist_pre_node(state: dict) -> dict:
     script = state.get("script_data", {})
     puzzle_type = script.get("puzzle", {}).get("type", "cipher")
 
-    prompt = f"""请为以下历史游戏生成 2 个视觉设计方向。
+    prompt = f"""为以下游戏生成 3 个视觉方向并选择最佳方案。
 
-事件：{script.get("event", "")}
+事件：{script.get('event','')}
 类型：{puzzle_type}
-氛围：{script.get("atmosphere", "")}
-情绪：{script.get("mood", "")}
-时代：{script.get("era", "")}
-道具：{", ".join(script.get("key_props", []))}
+氛围：{script.get('atmosphere','')}
+情绪：{script.get('mood','')}
+时代：{script.get('era','')}
+道具：{', '.join(script.get('key_props',[]))}
+视觉锚点：{script.get('visual',{}).get('mood','')}
 
-严格按 system prompt 的 JSON 格式输出。"""
+按 system prompt 的 JSON 格式输出。必须包含 selection_reasoning。"""
 
     try:
-        response = chat(prompt, system=SYSTEM_PROMPT, temperature=0.5)
+        response = chat(prompt, system=SYSTEM_PROMPT, temperature=0.7)
         response = _strip_markdown_fence(response)
         data = json.loads(response)
         directions = data.get("directions", [])
-
-        valid, msg = validate_directions(directions, puzzle_type)
-        if not valid:
-            raise ValueError(f"验证失败: {msg}")
-
-        selected = select_direction(directions, script)
+        idx = max(0, min(data.get("selected_index", 0), len(directions) - 1)) if directions else 0
+        selected = directions[idx] if directions else DEFAULT_FALLBACK
 
         return {
-            "directions": directions,
+            "directions": directions or [DEFAULT_FALLBACK],
             "selected_direction": selected,
-            "agent_logs": [agent_log("artist_pre", "designed", f"{puzzle_type}: {directions[0]['name']} vs {directions[1]['name']}, selected={selected['name']}")]
+            "agent_logs": [agent_log("artist_pre", "designed",
+                f"生成{len(directions)}个方向，选择「{selected['name']}」——{data.get('selection_reasoning','')[:60]}")]
         }
-
     except Exception as e:
-        fallback = DEFAULT_DIRECTIONS.get(puzzle_type, DEFAULT_DIRECTIONS["cipher"])
-        selected = select_direction(fallback, script)
         return {
-            "directions": fallback,
-            "selected_direction": selected,
+            "directions": [DEFAULT_FALLBACK], "selected_direction": DEFAULT_FALLBACK,
             "agent_logs": [agent_log("artist_pre", "error_fallback", str(e))]
         }

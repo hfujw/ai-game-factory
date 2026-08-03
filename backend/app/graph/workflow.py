@@ -1,11 +1,11 @@
-"""LangGraph Workflow — 6 Agent 的编排逻辑。
+"""LangGraph Workflow — 7 Agent 的编排逻辑。
 
 流程：
-  crawler → planner → writer → coder → reviewer
+  crawler → planner → writer → artist_pre → orchestrator → coder → reviewer
   reviewer → coder (审查不通过，回退重试，最多3次)
-  reviewer → artist (审查通过)
+  reviewer → artist_post (审查通过)
   reviewer → END (超过重试上限，终止)
-  artist → END
+  artist_post → END
 
 早停：
   - crawler 搜不到素材 → 直接返回失败
@@ -18,6 +18,7 @@ from app.agents.planner import planner_node
 from app.agents.crawler import crawler_node
 from app.agents.writer import writer_node
 from app.agents.artist_pre import artist_pre_node
+from app.agents.orchestrator import orchestrator_node
 from app.agents.coder import coder_node
 from app.agents.reviewer import reviewer_node
 from app.agents.artist_post import artist_post_node
@@ -56,6 +57,7 @@ def build_workflow() -> StateGraph:
     workflow.add_node("planner", planner_node)
     workflow.add_node("writer", writer_node)
     workflow.add_node("artist_pre", artist_pre_node)
+    workflow.add_node("orchestrator", orchestrator_node)
     workflow.add_node("coder", coder_node)
     workflow.add_node("reviewer", reviewer_node)
     workflow.add_node("artist_post", artist_post_node)
@@ -74,8 +76,9 @@ def build_workflow() -> StateGraph:
         should_continue_after_planner,
         {"writer": "writer", "end_failed": END},
     )
-    workflow.add_edge("writer", "artist_pre")      # 剧本 → 视觉设计
-    workflow.add_edge("artist_pre", "coder")        # 视觉设计 → 施工
+    workflow.add_edge("writer", "artist_pre")             # 剧本 → 视觉设计
+    workflow.add_edge("artist_pre", "orchestrator")       # 视觉设计 → 协调检查
+    workflow.add_edge("orchestrator", "coder")            # 协调 → 施工
     workflow.add_edge("coder", "reviewer")           # 施工 → 审查
     workflow.add_conditional_edges(
         "reviewer",
