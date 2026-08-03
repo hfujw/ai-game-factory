@@ -5,9 +5,23 @@ import os
 
 _KB_DIR = os.path.dirname(__file__)
 
+
+def _name(event: dict) -> str:
+    """统一获取事件名——兼容计算机历史(event)和八股(title)。"""
+    return event.get("event", event.get("title", ""))
+
+
+def _prep_keywords(event: dict):
+    """预归一化 keywords 和 aliases。"""
+    for key in ("keywords", "aliases"):
+        vals = event.get(key, [])
+        event[key] = [v.lower().strip() for v in vals if v]
+
 # 计算机历史
 with open(os.path.join(_KB_DIR, "verified_events.json"), "r", encoding="utf-8") as f:
     EVENTS = json.load(f)
+for e in EVENTS:
+    _prep_keywords(e)
 
 # Python 八股
 _BAGU_PATH = os.path.join(_KB_DIR, "verified_bagu.json")
@@ -16,6 +30,8 @@ if os.path.exists(_BAGU_PATH):
     with open(_BAGU_PATH, "r", encoding="utf-8") as f:
         bagu_data = json.load(f)
         BAGU_EVENTS = bagu_data.get("events", [])
+    for e in BAGU_EVENTS:
+        _prep_keywords(e)
 
 
 def get_all_events(category: str = None) -> list[dict]:
@@ -30,42 +46,37 @@ def get_all_events(category: str = None) -> list[dict]:
 def get_event_names(category: str = None) -> list[str]:
     """返回事件名列表。"""
     if category == "bagu":
-        return [e["title"] for e in BAGU_EVENTS]
-    return [e["event"] for e in EVENTS]
+        return [_name(e) for e in BAGU_EVENTS]
+    return [_name(e) for e in EVENTS]
 
 
 def get_event_by_keyword(text: str, category: str = None) -> dict | None:
-    """关键词匹配。category 为 None 时搜索全部。"""
+    """关键词匹配。先精确(别名/全名)→再子串(keywords/name)。"""
     pools = []
     if category in (None, "computer_history"):
         pools.extend(EVENTS)
     if category in (None, "bagu"):
         pools.extend(BAGU_EVENTS)
 
-    text_lower = text.lower()
-    best_match = None
-    best_score = 0
+    query = text.lower().strip()
+    best = None; best_score = 0
 
     for event in pools:
         score = 0
-        # 匹配 keywords
-        for kw in event.get("keywords", []):
-            if kw.lower() in text_lower:
-                score += 1
-        # 匹配 aliases
+        # 精确匹配：别名或全名完全等于查询
         for alias in event.get("aliases", []):
-            if alias.lower() in text_lower:
-                score += 1
-        # 匹配 title/event 名
-        name = event.get("event", event.get("title", ""))
-        for word in text_lower.split():
-            if len(word) >= 2 and word in name.lower():
-                score += 0.5
+            if alias == query: score += 3
+            elif query in alias or alias in query: score += 1.5
+        event_name = _name(event).lower()
+        if query == event_name: score += 3
+        elif query in event_name or event_name in query: score += 1.5
+        # 子串匹配：keywords
+        for kw in event.get("keywords", []):
+            if kw in query or query in kw: score += 0.5
         if score > best_score:
-            best_score = score
-            best_match = event
+            best_score = score; best = event
 
-    return best_match if best_score >= 1 else None
+    return best if best_score >= 1 else None
 
 
 def event_to_search_results(event: dict) -> list[dict]:
