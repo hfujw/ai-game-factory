@@ -42,11 +42,27 @@ def inject_screen_transition(html: str) -> str:
     return str(soup)
 
 
-def inject_fonts(html: str) -> str:
-    """BS4 安全注入字体链接。"""
-    if "fonts.googleapis.com" in html:
-        return html
-    return _safe_append_head(html, '<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">')
+def inject_fonts(html: str, direction: dict) -> str:
+    """注入方向指定的字体（不再硬编码 Press Start 2P）。"""
+    font_hint = direction.get("ui", "") + direction.get("reference_css", "")
+    font_link = None
+    if "Press Start 2P" in font_hint or "pixel" in font_hint.lower():
+        font_link = '<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">'
+    elif "Fira Code" in font_hint or "monospace" in direction.get("animation", ""):
+        font_link = '<link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">'
+    if font_link and "fonts.googleapis.com" not in html:
+        html = _safe_append_head(html, font_link)
+    return html
+
+
+def inject_reference_css(html: str, direction: dict) -> str:
+    """注入方向自带的 reference_css（artist_pre LLM 生成的视觉代码）。"""
+    ref = direction.get("reference_css", "")
+    if ref and len(ref) > 10:
+        soup = BeautifulSoup(html, 'html.parser')
+        _safe_append_css(soup, "/* === 方向视觉 === */\n" + ref)
+        return str(soup)
+    return html
 
 
 def inject_atmosphere(html: str, direction: dict) -> str:
@@ -66,7 +82,7 @@ def inject_palette_vars(html: str, direction: dict) -> str:
     palette = direction.get("palette", [])
     if len(palette) < 5:
         return html
-    var_css = f":root{{--bg:{palette[0]};--primary:{palette[1]};--success:{palette[2]};--text:{palette[3]};--muted:{palette[4]}}}"
+    var_css = f":root{{--bg:{palette[0]};--primary:{palette[1]};--success:{palette[2]};--text:{palette[3]};--muted:{palette[4]};--panel:{palette[0]}dd;--border:{palette[4]}44;--text-dim:{palette[3]}88;--warning:#d29922;--danger:#f85149;--accent:#d2a8ff}}"
     soup = BeautifulSoup(html, 'html.parser')
     _safe_append_css(soup, var_css)
     return str(soup)
@@ -97,11 +113,12 @@ def artist_post_node(state: dict) -> dict:
 
     styled = game_code
 
-    # Step 1: 正则注入（强制）
-    styled = inject_palette_vars(styled, direction)
-    styled = inject_screen_transition(styled)
-    styled = inject_fonts(styled)
-    styled = inject_atmosphere(styled, direction)
+    # Step 1: 方向感知注入（BS4）
+    styled = inject_palette_vars(styled, direction)       # 方向色板 → CSS 变量
+    styled = inject_reference_css(styled, direction)     # 方向参考 CSS（LLM 生成的视觉）
+    styled = inject_screen_transition(styled)             # 画面切换动画
+    styled = inject_fonts(styled, direction)              # 方向字体（不再硬编码）
+    styled = inject_atmosphere(styled, direction)         # CRT/粒子/氛围
 
     # Step 2: 可选 LLM 微调（追加模式，BS4 注入）
     try:
