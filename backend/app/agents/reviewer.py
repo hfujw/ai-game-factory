@@ -45,8 +45,12 @@ WARNING_RULES = [
     ("screen_result", r'(id=["\']screen-result["\']|胜利|失败|通关|再来)', "缺少结果画面"),
     ("history", r'(HISTORY_FACTS|历史真相)', "缺少历史真相"),
 ]
-CSS_QUALITY_CHECKS = [
+# 正向检查：模式存在=OK（cursor:pointer 应该有）
+CSS_MUST_HAVE = [
     ("clickable_button", r'cursor\s*:\s*pointer', "所有按钮缺少 cursor:pointer，可能无法点击"),
+]
+# 反向检查：模式存在=坏（pointer-events:none 不应该有，除了 .screen）
+CSS_MUST_NOT_HAVE = [
     ("no_blocked_pointer", r'pointer-events\s*:\s*none', "存在 pointer-events:none 可能阻塞交互"),
 ]
 
@@ -64,8 +68,11 @@ def phase1_contract_check(game_code: str, game_script: str) -> dict:
             warning_missing.append(feedback)
 
     css_warnings = []
-    for name, pattern, feedback in CSS_QUALITY_CHECKS:
+    for name, pattern, feedback in CSS_MUST_HAVE:
         if not re.search(pattern, game_code, re.IGNORECASE):
+            css_warnings.append(feedback)
+    for name, pattern, feedback in CSS_MUST_NOT_HAVE:
+        if re.search(pattern, game_code, re.IGNORECASE):
             css_warnings.append(feedback)
 
     # === 答案溯源检查（零成本）===
