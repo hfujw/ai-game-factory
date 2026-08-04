@@ -1,4 +1,4 @@
-"""AI 游戏工坊 — FastAPI 入口。"""
+"""AI-Native Workflow — FastAPI 入口。"""
 
 import logging
 from logging.handlers import RotatingFileHandler
@@ -51,7 +51,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.llm_client import get_cost_summary, reset_cost
 from app.ws_manager import ws_manager
 
-app = FastAPI(title="时光像素", version="0.1.0")
+app = FastAPI(title="AI-Native Workflow", version="2.0.0")
 
 # CORS — 允许前端开发时的跨域请求（Vite dev server: localhost:5173）
 app.add_middleware(
@@ -67,7 +67,7 @@ from app.knowledge.kb import get_all_events
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "service": "AI 游戏工坊"}
+    return {"status": "ok", "service": "AI-Native Workflow"}
 
 
 @app.get("/api/cost")
