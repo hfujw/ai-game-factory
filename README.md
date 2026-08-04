@@ -95,4 +95,4 @@ frontend/src/
 
 ## GitHub
 
-https://github.com/hfujw/ai-game-factory
+https://github.com/hfujw/ai-native-workflow
