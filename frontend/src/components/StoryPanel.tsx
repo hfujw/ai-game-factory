@@ -1,24 +1,22 @@
 import { useState } from 'react'
 import { Maximize2, Minimize2, Minus, X } from 'lucide-react'
 
-interface Props { visible:boolean; gameCode:string|null; isGenerating:boolean; agentCount:number; doneCount:number; onClose:()=>void }
+interface Props { visible:boolean; gameCode:string|null; isGenerating:boolean; onClose:()=>void }
 
-export function GamePanel({ visible, gameCode, isGenerating, agentCount, doneCount, onClose }: Props) {
+export function StoryPanel({ visible, gameCode, isGenerating, onClose }: Props) {
   const [isFullscreen, setFullscreen] = useState(false)
   const [minimized, setMinimized] = useState(false)
 
   if (!visible && !isGenerating) return null
-  const progress = agentCount>0 ? (doneCount/agentCount)*100 : 0
 
   // Minimized: show a small floating pill
   if (minimized && visible) {
     return (
       <div className="absolute z-50 left-1/2 -translate-x-1/2 pointer-events-auto"
-        style={{ top:'58%' }}>
+        style={{ top:'62%' }}>
         <button onClick={() => setMinimized(false)}
-          className="flex items-center gap-2 px-4 py-2 bg-black/40 backdrop-blur-xl border border-lime-400/20 rounded-full text-lime-400/70 hover:text-lime-300 hover:border-lime-400/40 transition-all text-xs shadow-lg">
+          className="flex items-center gap-2 px-3 py-2 bg-black/40 backdrop-blur-xl border border-lime-400/20 rounded-full text-lime-400/70 hover:text-lime-300 hover:border-lime-400/40 transition-all shadow-lg">
           <div className="w-2 h-2 rounded-full bg-lime-400 animate-pulse" />
-          游戏已就绪
         </button>
       </div>
     )
@@ -29,7 +27,7 @@ export function GamePanel({ visible, gameCode, isGenerating, agentCount, doneCou
     width: full ? '100vw' : 'min(560px, 55vw)',
     height: full ? '100vh' : 'auto',
     aspectRatio: full ? undefined : '16/9',
-    top: full ? 0 : '56%',
+    top: full ? 0 : '60%',
     transform: full ? 'translate(-50%,0)' : 'translate(-50%,-50%)',
     borderRadius: full ? 0 : 20,
     background: full ? 'rgba(0,0,0,0.95)'
@@ -50,35 +48,19 @@ export function GamePanel({ visible, gameCode, isGenerating, agentCount, doneCou
 
   return (
     <div style={s}>
-      {/* Generating progress */}
+      {/* Generating: 极简呼吸点，不挡画面 */}
       {isGenerating && !visible && (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-4 px-8">
-          <p className="text-white/60 text-sm tracking-[0.05em]">Agent 协作中…</p>
-          <div className="flex gap-3">
-            {[...Array(agentCount)].map((_,i)=>(
-              <div key={i} className="w-2.5 h-2.5 rounded-full transition-all duration-300"
-                style={{ background:i<doneCount?'#34d399':i===doneCount?'#34d399':'rgba(255,255,255,0.15)',
-                  boxShadow:i===doneCount?'0 0 10px rgba(52,211,153,0.6)':'none',
-                  animation:i===doneCount?'blink 1s infinite':'none' }} />
-            ))}
-          </div>
-          <div className="w-full h-[2px] bg-white/[0.08] rounded-full overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-700"
-              style={{ width:`${progress}%`, background:'linear-gradient(90deg,#f59e0b,#34d399)' }} />
+        <div className="w-full h-full flex items-center justify-center">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-lime-500"></span>
+            </span>
+            <span className="text-white/30 text-xs tracking-[0.05em]">策展中</span>
           </div>
         </div>
       )}
 
-      {/* Empty idle */}
-      {!isGenerating && !visible && (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-5">
-          <p className="text-white/45 text-sm tracking-[0.05em]" style={{ animation:'blink 2s infinite' }}>
-            等待时间裂隙开启...
-          </p>
-          <div className="w-4 h-4 rounded-full"
-            style={{ background:'rgba(251,146,60,0.5)', boxShadow:'0 0 16px rgba(251,146,60,0.4)', animation:'blink 1.5s infinite' }} />
-        </div>
-      )}
 
       {/* Game iframe */}
       {visible && !isFullscreen && (<>
@@ -93,7 +75,7 @@ export function GamePanel({ visible, gameCode, isGenerating, agentCount, doneCou
             className="p-2 rounded-lg bg-white/[0.08] hover:bg-red-500/20 text-white/50 hover:text-red-400 transition-colors" title="关闭">
             <X size={14}/></button>
         </div>
-        <iframe srcDoc={gameCode||''} sandbox="allow-scripts" title="生成游戏"
+        <iframe srcDoc={gameCode||''} sandbox="allow-scripts" title="视觉故事"
           className="w-full h-full border-none bg-black" style={{ borderRadius:16 }} />
       </>)}
 

@@ -19,3 +19,4 @@ backend/.env
 dist/
 .vite/
 _last_failed_game.html
+backend/logs/

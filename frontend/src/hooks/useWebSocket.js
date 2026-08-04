@@ -54,7 +54,7 @@ export function useWebSocket() {
               [data.agent]: {
                 status: data.status,
                 message: data.message,
-                retries: (prev[data.agent]?.retries || 0),
+                retries: data.data?.retry ?? (prev[data.agent]?.retries || 0),
               },
             }))
             setMessages(prev => [...prev, {
@@ -80,23 +80,26 @@ export function useWebSocket() {
             generatingRef.current = false
             break
 
-          case 'agent_log':
+          case 'thinking':
             setMessages(prev => [...prev, {
               id: ++logIdRef.current,
               time: new Date().toLocaleTimeString(),
-              agent: data.agent,
-              detail: `${data.action}: ${data.detail}`,
+              agent: data.tool || 'thinking',
+              detail: data.thought || '',
+              type: 'thinking',
             }])
             break
 
-          case 'review_rejected':
+          case 'tool_result':
             setMessages(prev => [...prev, {
               id: ++logIdRef.current,
               time: new Date().toLocaleTimeString(),
-              agent: 'reviewer',
-              detail: `❌ 审查不通过 → 退回重做: ${data.feedback?.slice(0, 80) || ''}`,
+              agent: data.tool || 'tool',
+              detail: data.summary || '',
+              type: 'tool_result',
             }])
             break
+
         }
       } catch (e) {
         // 忽略无法解析的消息帧
@@ -124,15 +127,6 @@ export function useWebSocket() {
     }
   }, [])
 
-  const cancel = useCallback(() => {
-    if (wsRef.current) {
-      wsRef.current.close()
-      wsRef.current = null
-    }
-    setIsGenerating(false)
-    generatingRef.current = false
-  }, [])
-
   const dismiss = useCallback(() => {
     if (wsRef.current) {
       wsRef.current.close()
@@ -145,6 +139,8 @@ export function useWebSocket() {
     setStatuses({})
     setMessages([])
   }, [])
+
+  const cancel = useCallback(() => dismiss(), [dismiss])
 
   return { statuses, messages, gameCode, error, isGenerating, sendEvent, cancel, dismiss }
 }

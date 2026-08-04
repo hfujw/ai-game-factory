@@ -16,20 +16,26 @@ def _prep_keywords(event: dict):
         vals = event.get(key, [])
         event[key] = [v.lower().strip() for v in vals if v]
 
-# 加载全部示例话题
-with open(os.path.join(_KB_DIR, "verified_events.json"), "r", encoding="utf-8") as f:
-    EVENTS = json.load(f)
-for e in EVENTS:
-    _prep_keywords(e)
+# 加载全部示例话题（文件不存在时降级为空列表）
+try:
+    with open(os.path.join(_KB_DIR, "verified_events.json"), "r", encoding="utf-8") as f:
+        EVENTS = json.load(f)
+    for e in EVENTS:
+        _prep_keywords(e)
+except Exception:
+    EVENTS = []
 
 _BAGU_PATH = os.path.join(_KB_DIR, "verified_bagu.json")
 BAGU_EVENTS = []
 if os.path.exists(_BAGU_PATH):
-    with open(_BAGU_PATH, "r", encoding="utf-8") as f:
-        bagu_data = json.load(f)
-        BAGU_EVENTS = bagu_data.get("events", [])
-    for e in BAGU_EVENTS:
-        _prep_keywords(e)
+    try:
+        with open(_BAGU_PATH, "r", encoding="utf-8") as f:
+            bagu_data = json.load(f)
+            BAGU_EVENTS = bagu_data.get("events", [])
+        for e in BAGU_EVENTS:
+            _prep_keywords(e)
+    except Exception:
+        pass
 
 ALL_EVENTS = EVENTS + BAGU_EVENTS
 

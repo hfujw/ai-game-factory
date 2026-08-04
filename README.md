@@ -1,142 +1,63 @@
-# 时光像素 · AI Agent 游戏工厂
+# 时光像素 · AI 视觉叙事引擎
 
-> 输入一个计算机历史事件 → 6 个 AI Agent 协作 → 自动生成可玩的像素解谜网页游戏
+> 输入任意主题 → AI 自主决策 → 生成精美的交互式 HTML 页面
 
-![License](https://img.shields.io/badge/license-MIT-green)
-![Python](https://img.shields.io/badge/python-3.13-blue)
-![React](https://img.shields.io/badge/react-19-61dafb)
+## 它是什么
 
----
+一个 AI 原生系统。说"AI 原生"不是因为它调了 LLM，而是因为**流程是 AI 自己决定的**——搜多少次、用什么形式呈现、失败了退回哪一步，全是 AI 的决策。
 
-## 30 秒看懂
-
-```
-你输入 "1940年 Turing 破译德军 Enigma 密码"
-        ↓
-   🔍 爬虫Agent    查史料（本地知识库命中 → 免费）
-        ↓
-   🎯 策划Agent    选谜题类型（cipher 密码破译）
-        ↓
-   ✍️ 文案Agent    写游戏剧本（300-500字沉浸叙事）
-        ↓
-   💻 程序Agent    生成 HTML 游戏（契约驱动，13条硬性要求）
-        ↓
-   🔎 审查Agent    两阶段检查（正则机械 + LLM 质量）
-        ↓
-   🎨 美术Agent    注入像素风 CSS（4套主题可选）
-        ↓
-   🎮 浏览器直接玩 ←── WebSocket 实时推送每一步进度
-```
+用户输入任意主题——AI 自己搜索素材，自己决定用时间轴还是对比表还是卡片集，自己写文案并标注信息来源，自己生成 HTML 并用 Playwright 真执行验证。整个过程在前端驾驶舱实时可见。每个行动之前 AI 先"思考"——用户看到思考气泡，AI 才开始干活。
 
 ## 架构
 
-```mermaid
-graph LR
-    User[用户输入] --> WS[WebSocket]
-    WS --> Crawler[🔍 爬虫]
-    Crawler --> Planner[🎯 策划]
-    Planner --> Writer[✍️ 文案]
-    Writer --> Coder[💻 程序]
-    Coder --> Reviewer[🔎 审查]
-    Reviewer -- 不通过(最多3次) --> Coder
-    Reviewer -- 通过 --> Artist[🎨 美术]
-    Artist --> Game[🎮 游戏代码]
+```
+用户输入
+    ↓
+编排 LLM（自己决定流程，不被人写死）
+    ├── search   搜素材（Bing + KB）
+    ├── design   选叙事形式（时间轴/对比表/卡片/流程图/地图/百科）
+    ├── compose  写文案 + 每个事实标注来源
+    ├── render   生成 HTML（max_tokens=8192，截断自动检测）
+    └── verify   Playwright 真执行 + 事实核查 + 判决
+    ↓
+交互式视觉叙事页面
 ```
 
-## 技术栈
+## 为什么不做游戏了
 
-| 层 | 选型 | 为什么 |
-|----|------|--------|
-| Agent 编排 | **LangGraph StateGraph** | 有分支+条件回退，不是线性 Chain |
-| LLM | **DeepSeek API** | 便宜、中文好 |
-| 后端 | **FastAPI** | 原生异步 + WebSocket |
-| 前端 | **React 19 + Vite** | 前后端分离 |
-| 通信 | **WebSocket** | Agent 每步实时推送 |
-| 审查 | **契约驱动 + 两阶段** | 正则验证结构(免费) + LLM 审查质量 |
+上一版做解谜游戏。约束太重——必须能玩、必须有 5 个 screen、必须有游戏循环。LLM 写到一半截断，审查反复打回，¥0.50 打水漂。把约束从"必须能玩"松绑到"必须好看且准确"，AI 决策空间 ×5，稳定性 ×10。
 
-## 6 个 Agent
-
-| Agent | 职责 | LLM 调用 |
-|-------|------|:--:|
-| 🔍 爬虫 crawler | 先查本地知识库(10事件) → DeepSeek 兜底 | 仅 KB 未命中时 |
-| 🎯 策划 planner | 基于史料选谜题类型(cipher/sequence/logic) | 1次 |
-| ✍️ 文案 writer | 写游戏剧本(背景故事+谜题描述+台词) | 1次 |
-| 💻 程序 coder | 按 13 条契约生成 HTML+CSS+JS 游戏 | 1次 |
-| 🔎 审查 reviewer | Phase1 正则 + Phase2 LLM，不通过退 coder(最多3次) | 1次 |
-| 🎨 美术 artist | 注入像素风 CSS(4 套主题可选) | 1次 |
-
-## 快速开始
-
-### 1. 环境准备
+## 运行
 
 ```bash
-# Python 3.13 + venv
-cd backend
-python -m venv ../venv
-../venv/Scripts/pip install -r requirements.txt
+# 后端
+cd backend && ..\venv\Scripts\python -m uvicorn app.main:app --reload
 
-# Node.js
-cd frontend
-npm install
+# 前端
+cd frontend && npm run dev
 ```
-
-### 2. 配置 API Key
-
-```bash
-cp backend/.env.example backend/.env
-# 编辑 backend/.env，填入 DEEPSEEK_API_KEY
-```
-
-### 3. 启动
-
-```bash
-# 终端1：后端
-bash start-backend.sh    # → http://localhost:8000
-
-# 终端2：前端
-bash start-frontend.sh   # → http://localhost:5173
-```
-
-浏览器打开 `http://localhost:5173`，输入计算机历史事件即可。
 
 ## 项目结构
 
 ```
-contract-review-agent/
-├── backend/
-│   ├── app/
-│   │   ├── main.py              # FastAPI + WebSocket
-│   │   ├── ws_manager.py        # WS 连接管理
-│   │   ├── llm_client.py        # DeepSeek 封装(超时/重试/花费追踪)
-│   │   ├── graph/
-│   │   │   ├── state.py         # GameFactoryState
-│   │   │   └── workflow.py      # LangGraph 编排
-│   │   ├── agents/
-│   │   │   ├── crawler.py       # 知识检索(KB+LLM)
-│   │   │   ├── planner.py       # 谜题设计
-│   │   │   ├── writer.py        # 剧本生成
-│   │   │   ├── coder.py         # 游戏代码(契约驱动)
-│   │   │   ├── reviewer.py      # 两阶段审查
-│   │   │   └── artist.py        # 像素 CSS
-│   │   ├── knowledge/
-│   │   │   ├── verified_events.json  # 10个验证事件
-│   │   │   └── pixel-theme.css
-│   │   └── mcp/                 # MCP Server(待实现)
-│   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx              # 双栏布局
-│   │   ├── hooks/useWebSocket.js
-│   │   ├── components/          # 6 组件
-│   │   └── styles/pixel-theme.css # 液态玻璃主题
-│   └── public/bg.mp4            # 视频背景
-└── CLAUDE.md                    # AI 上下文
+backend/app/
+├── main.py           FastAPI + WebSocket
+├── orchestrator.py   编排Agent（思考→行动→反馈主循环）
+├── tools.py          5个工具（search/design/compose/render/verify）
+├── llm_client.py     DeepSeek API
+├── ws_manager.py     WebSocket管理
+├── web_search.py     Bing搜索
+└── kb.py             33个示例话题
+frontend/src/
+├── App.jsx
+├── components/
+│   ├── DecisionLog.tsx   AI思考流程主舞台
+│   ├── StoryPanel.tsx    iframe展示
+│   ├── AgentBuds.tsx     工具状态灯
+│   └── ...
+└── hooks/useWebSocket.js
 ```
 
-## 花费
+## GitHub
 
-单次生成约 **¥0.11**（5 次 LLM 调用，KB 命中时免爬虫费用）。查看 `/api/cost` 获取累计统计。
-
-## License
-
-MIT
+https://github.com/hfujw/ai-game-factory

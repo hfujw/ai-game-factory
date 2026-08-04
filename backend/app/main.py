@@ -1,24 +1,55 @@
-"""AI 游戏工坊 — FastAPI 入口。
-
-WebSocket 端点：/ws/generate
-- 用户输入历史事件 → 触发 LangGraph Agent Pipeline → 实时推送进度 → 返回游戏代码
-"""
+"""AI 游戏工坊 — FastAPI 入口。"""
 
 import logging
+from logging.handlers import RotatingFileHandler
+import sys
+import os
+
+# ═══════════════════════════════════════════════════════════════
+# 日志系统 — 必须在所有业务 import 之前配置，防止被 uvicorn 抢占
+# ═══════════════════════════════════════════════════════════════
+LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+
+root = logging.getLogger()
+root.setLevel(logging.DEBUG)
+for h in list(root.handlers):
+    try: h.close()
+    except: pass
+    root.removeHandler(h)
+
+# 终端：INFO 及以上 → stdout
+_sh = logging.StreamHandler(sys.stdout)
+_sh.setLevel(logging.INFO)
+_sh.setFormatter(logging.Formatter("%(asctime)s | %(name)-22s | %(levelname)-8s | %(message)s", datefmt="%H:%M:%S"))
+root.addHandler(_sh)
+
+# 文件：DEBUG 及以上 → detail.log
+_fh = RotatingFileHandler(
+    os.path.join(LOG_DIR, "detail.log"),
+    maxBytes=5 * 1024 * 1024, backupCount=10, encoding="utf-8",
+)
+_fh.setLevel(logging.DEBUG)
+_fh.setFormatter(logging.Formatter("%(asctime)s [%(name)s] %(levelname)s: %(message)s"))
+root.addHandler(_fh)
+
+# 压低第三方噪音
+for _n in ("uvicorn.access", "httpx", "httpcore", "openai"):
+    logging.getLogger(_n).setLevel(logging.WARNING)
+
+logger = logging.getLogger(__name__)
+
+# ═══════════════════════════════════════════════════════════════
+# 业务 import
+# ═══════════════════════════════════════════════════════════════
 import uuid
 import asyncio
 import json
-import os
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from app.graph.state import initial_state
-from app.graph.workflow import build_workflow
 from app.llm_client import get_cost_summary, reset_cost
 from app.ws_manager import ws_manager
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
-logger = logging.getLogger("main")
 
 app = FastAPI(title="时光像素", version="0.1.0")
 
@@ -30,9 +61,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# 编译 LangGraph 工作流（启动时执行一次）
-workflow = build_workflow()
 
 from app.knowledge.kb import get_all_events
 
@@ -69,6 +97,7 @@ async def generate_game(websocket: WebSocket):
     """WebSocket 端点——接收用户输入，触发 Agent Pipeline，实时推送进度。"""
     session_id = str(uuid.uuid4())[:8]
     await ws_manager.connect(session_id, websocket)
+    reset_cost()
 
     try:
         # 接收用户输入
@@ -81,108 +110,60 @@ async def generate_game(websocket: WebSocket):
 
         # 通知前端开始
         await ws_manager.send_progress(session_id, "system", "running", f"收到事件：「{user_input}」")
+        print(f"\n[时光像素] 新请求 | {session_id} | {user_input}", flush=True)
 
-        # 创建初始状态
-        state = initial_state(user_input)
+        # T+0 立即推第一条日志，不等 Agent 启动
+        await ws_manager.send_json(session_id, {
+            "type": "thinking",
+            "step": 0,
+            "thought": f"收到主题「{user_input}」，准备策展...",
+            "tool": "thinking",
+            "budget": 0,
+        })
 
-        # 运行 LangGraph 工作流
-        # astream_events 推送实时进度，同时累积输出为最终状态
-        prev_node = None
-        prev_node_output = {}
-        final_output = {}
+        # 运行编排Agent
+        from app.agents.orchestrator import orchestrator_node
 
-        AGENT_NAMES = {
-            "planner": "策划Agent",
-            "crawler": "爬虫Agent",
-            "writer": "文案Agent",
-            "artist_pre": "美术设计Agent",
-            "orchestrator": "协调Agent",
-            "coder": "程序Agent",
-            "reviewer": "审查Agent",
-            "artist_post": "美术渲染Agent",
-        }
+        async def push(msg: dict):
+            """实时推送到前端。"""
+            if msg.get("type") == "thinking":
+                await ws_manager.send_json(session_id, {
+                    "type": "thinking", "step": msg["step"],
+                    "thought": msg["thought"], "tool": msg["tool"],
+                    "budget": msg["budget"],
+                })
+            elif msg.get("type") == "tool_result":
+                await ws_manager.send_json(session_id, {
+                    "type": "tool_result", "step": msg["step"],
+                    "tool": msg["tool"], "summary": msg["summary"],
+                    "budget": msg["budget"],
+                })
+            elif msg.get("type") == "complete":
+                await ws_manager.send_game_ready(session_id, msg["html"])
+            elif msg.get("type") == "failed":
+                await ws_manager.send_failed(session_id, msg["reason"], [])
 
-        async for event in workflow.astream_events(state, version="v2"):
-            kind = event.get("event")
+        result = await orchestrator_node({"user_input": user_input, "_push": push})
 
-            if kind == "on_chain_start":
-                node_name = event.get("name", "")
-                if node_name in AGENT_NAMES:
-                    # 检测 reviewer→coder 回退
-                    if node_name == "coder" and prev_node == "reviewer":
-                        review_feedback = prev_node_output.get("review_feedback", "")
-                        retries = prev_node_output.get("retry_count", 1)
-                        await ws_manager.send_json(session_id, {
-                            "type": "review_rejected",
-                            "feedback": review_feedback,
-                            "retry": retries,
-                        })
-                        await ws_manager.send_progress(
-                            session_id, node_name, "running",
-                            f"程序Agent 第{retries}次重试中…（审查反馈：{review_feedback[:60]}）"
-                        )
-                    else:
-                        await ws_manager.send_progress(
-                            session_id, node_name, "running",
-                            f"{AGENT_NAMES.get(node_name, node_name)} 正在工作中…"
-                        )
-
-            elif kind == "on_chain_end":
-                node_name = event.get("name", "")
-                output = event.get("data", {}).get("output", {})
-                if node_name in AGENT_NAMES:
-                    # 推送完成状态 + 决策摘要
-                    summary = ""
-                    if node_name == "crawler":
-                        verified = output.get("agent_logs", [{}])[-1].get("action", "")
-                        summary = "命中验证知识库" if verified == "verified" else "DeepSeek检索"
-                    elif node_name == "planner":
-                        puzzle = output.get("puzzle_type", "?")
-                        summary = f"选择谜题类型：{puzzle}"
-                    elif node_name == "reviewer":
-                        passed = output.get("review_passed", False)
-                        summary = "✓ 审查通过" if passed else "✗ 审查不通过"
-
-                    await ws_manager.send_progress(
-                        session_id, node_name, "done",
-                        f"{AGENT_NAMES.get(node_name, node_name)} 完成 · {summary}" if summary
-                        else f"{AGENT_NAMES.get(node_name, node_name)} 完成 ✓",
-                    )
-
-                    # 推送全部 agent_log（AI 思考过程可见化）
-                    agent_logs = output.get("agent_logs", [])
-                    for log in agent_logs:
-                        await ws_manager.send_json(session_id, {
-                            "type": "agent_log",
-                            "agent": log.get("agent") or node_name,
-                            "action": log.get("action", ""),
-                            "detail": log.get("detail", ""),
-                        })
-
-                    prev_node = node_name
-                    prev_node_output = output
-                    # 累积所有输出为最终状态（后面的覆盖前面的同名字段）
-                    if isinstance(output, dict):
-                        final_output.update(output)
-
-        # 推送花费
         cost = get_cost_summary()
-        logger.info(f"生成完成，本次花费: ¥{cost['estimated_cost_rmb']} ({cost['calls']}次LLM调用)")
-        logger.info(f"final_output keys: {list(final_output.keys())} status={final_output.get('status')} styled_len={len(final_output.get('styled_code',''))}")
+        print(f"[时光像素] 生成结束 | {session_id} | status={result.get('status')} | "
+              f"steps={result.get('steps')} | 花费=¥{cost['estimated_cost_rmb']} | "
+              f"LLM调用={cost['calls']}次", flush=True)
 
-        # 推送结果：用 astream_events 累积的 final_output
-        if final_output.get("status") == "success":
-            await ws_manager.send_game_ready(session_id, final_output.get("styled_code", ""))
-        else:
+        if result.get("status") != "success":
             await ws_manager.send_failed(
                 session_id,
-                final_output.get("error_message", "生成失败"),
-                final_output.get("suggestions", []),
+                f"这个主题的素材不够清晰，AI 尝试了 {result.get('steps', 0)} 步仍无法绘出完整的故事。换一个信息更充分的主题试试。",
+                [],
             )
 
     except WebSocketDisconnect:
         pass
     except Exception as e:
-        await ws_manager.send_failed(session_id, f"系统错误: {str(e)}", [])
+        logger.exception("生成流程异常")
+        try:
+            await ws_manager.send_failed(session_id, f"系统错误: {str(e)}", [])
+        except Exception:
+            pass
     finally:
         await ws_manager.disconnect(session_id)

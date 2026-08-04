@@ -2,159 +2,91 @@
 
 ## 当前数据来源
 
-### 1. 本地知识库（verified_events.json）
+### 1. 统一知识库（dual JSON files）
 
-**位置**：`backend/app/knowledge/verified_events.json`
+**位置**：
+- `backend/app/knowledge/verified_events.json` — 25 个计算机历史事件
+- `backend/app/knowledge/verified_bagu.json` — 8 道 Python 面试题（共 33 个示例话题）
 
-**结构**：每个事件包含
+**两种格式，统一处理**：
+
+历史事件格式：
 ```json
 {
   "event": "事件全名",
-  "keywords": ["关键词数组，用于匹配用户输入"],
-  "aliases": ["中文别名/俗称/拼写变体，用于模糊匹配"],
+  "keywords": ["关键词数组"],
+  "aliases": ["中文别名/俗称"],
   "facts": {
-    "time": "时间",
-    "place": "地点",
-    "people": ["人物数组"],
-    "story": "200-500字故事（writer 的核心素材）",
+    "time": "时间", "place": "地点", "people": ["人物"],
+    "story": "200-500字故事（writer 核心素材）",
     "fun_fact": "趣闻"
-  }
+  },
+  "atmosphere_tags": ["氛围标签"],
+  "key_props": ["可视觉化道具"],
+  "visual_anchor": "一句话画面描述"
 }
 ```
 
-**10 个事件**：
-| # | 事件 | 类型 |
-|---|------|------|
-| 1 | 1940年 Turing 破译德军 Enigma 密码 | cipher |
-| 2 | 1989年圣诞节 Guido 发明了 Python | sequence |
-| 3 | 1974年 Cerf 和 Kahn 画出 TCP 草图 | logic |
-| 4 | 1991年 Linus 写下了 Linux 的第一行代码 | sequence |
-| 5 | 1995年 Java 的诞生 | sequence |
-| 6 | 1970年 Codd 发表关系型数据库论文 | logic |
-| 7 | 1958年 McCarthy 发明 Lisp | logic |
-| 8 | 1971年 Bayer 发明 B树 | logic |
-| 9 | 2009年 antirez 在意大利写 Redis | sequence |
-| 10 | 1993年 Andreessen 发布 Mosaic 浏览器 | sequence |
+Python话题格式：
+```json
+{
+  "title": "可变对象 vs 不可变对象",
+  "content": {
+    "original": "代码片段",
+    "translation": "代码解释",
+    "annotations": ["知识点1", "知识点2"]
+  },
+  "difficulty": 1,
+  "keywords": ["关键词"], "aliases": ["别名"],
+  "atmosphere_tags": ["终端", "代码", "IDE"],
+  "key_props": ["终端", "光标"],
+  "visual_anchor": "画面描述"
+}
+```
 
-### 2. DeepSeek 兜底（crawler 的 Plan B）
+**kb.py 的 `event_to_search_results()`** 统一将两种格式转为相同的 `search_results` 结构（`title/content/key_facts/atmosphere_tags/key_props/visual_anchor`），下游 Agent 不区分来源。
 
-当用户输入的事件不在本地 KB 中时，crawler 调用 DeepSeek 做知识检索。返回的结果结构和 KB 一致（`title/content/key_facts`），但标记 `verified: false`。
+### 2. web_search（Bing → DuckDuckGo）
 
-### 3. 用户输入 → 匹配流程
+所有输入都会触发 web_search，补充素材。返回 `{title, snippet, url}`，标记 `verified: false`。
+
+### 3. DeepSeek 兜底
+
+当素材不足时，crawler 调用 DeepSeek 补充，标记 `source: "deepseek_knowledge"`。
+
+## 用户输入 → 完整数据流
 
 ```
 用户输入
   ↓
-crawler: 关键词+别名在 KB 中匹配
-  ├── 命中 → verified=true, material_score=1.0, 免费
-  └── 未命中 → DeepSeek兜底 → verified=false, material_score≤0.85, 花一次LLM
+crawler: KB匹配(作为起始素材) + Bing搜索(补充素材) + LLM 6维评估(素材质量)
+  ├── 素材充足 → material_sufficient=true, suggested_type=cipher/sequence/logic
+  ├── 素材不足+DeepSeek补充成功 → 继续
+  └── 素材彻底不足 → 失败，前端展示"素材不足，建议尝试: ..."
   ↓
-planner: 基于史料内容选 puzzle_type
+planner: CoT 6步推理 → 选 puzzle_type(cipher/sequence/logic) + 设计机制
   ↓
-writer: 基于史料写 GameScript JSON
+writer: 基于素材+谜题设计 → GameScript JSON
+  ↓
+artist_pre: 基于剧本 → 3个视觉方向 + 自选
+  ↓
+orchestrator: 跨Agent一致性检查 → orchestrator_notes
+  ↓
+coder: 基于剧本+视觉方向+协调备注 → HTML游戏
+  ↓
+reviewer: 两阶段审查 → 通过/回退(最多3次)
+  ↓
+artist_post: BS4注入CSS → 最终游戏
 ```
 
-## 数据流向
+**所有输入走完全相同流程。** KB 命中只是提供更丰富的起始素材，不改变 pipeline 逻辑。
 
-```
-verified_events.json ──→ crawler ──→ search_results ──→ planner ──→ puzzle_type
-                                                          │
-                                                          ├──→ writer ──→ game_script (JSON)
-                                                          │                    │
-                                                          │                    ├──→ artist_pre (视觉方向)
-                                                          │                    ├──→ coder (游戏代码)
-                                                          │                    └──→ reviewer (历史审查)
-                                                          │
-                                                          └──→ [前端]: 推荐事件 chips
-```
+## 33 个示例话题
 
-## 如何扩展知识库
+**计算机历史 (25):** Turing/Enigma, Guido/Python, Cerf-Kahn/TCP, Linus/Linux, Java/Gosling, Codd/SQL, McCarthy/Lisp, Bayer/B-tree, antirez/Redis, Andreessen/Mosaic, ENIAC, ARPANET, Macintosh, Facebook, OpenAI, Google, iPhone, Transformer, Intel, GitHub, ChatGPT, GNU, Wikipedia, Winamp, Napster, Unicode, Docker
 
-### 添加新的计算机历史事件
+**Python (8):** 可变对象 vs 不可变对象, 深拷贝 vs 浅拷贝, 装饰器语法糖, 生成器与 yield, GIL 全局解释器锁, 上下文管理器, 描述符与 @property, 可变默认参数陷阱
 
-在 `verified_events.json` 数组中添加一条新记录：
-```json
-{
-  "event": "事件全名（用于匹配和展示）",
-  "keywords": ["英文名", "核心技术词"],
-  "aliases": ["中文俗称1", "中文俗称2"],
-  "facts": {
-    "time": "具体时间",
-    "place": "地点",
-    "people": ["人物1", "人物2"],
-    "story": "200-500字的叙述性故事。要口语化、有画面感。writer 会基于这个故事写剧本。",
-    "fun_fact": "一条有趣的冷知识"
-  }
-}
-```
+## 如何扩展
 
-**关键**：`aliases` 字段决定了用户输入能否匹配到这个事件。尽量覆盖常见叫法。
-
-### 新增领域：中国历史 / 八股学习
-
-如果需要扩展到中国历史或八股文学习，有两种方案：
-
-**方案 A：扩展现有 KB**
-- 直接在 `verified_events.json` 里加中国历史事件
-- 加新的事件类型标签（如 `category: "chinese_history"` 或 `category: "bagu_learning"`）
-- 前端加分类筛选
-
-**方案 B：独立知识库**
-- 新建 `verified_chinese_history.json`
-- `verified_bagu.json`
-- crawler 根据用户输入的关键词自动路由到不同 KB
-- 不同领域可以有不同的谜题类型（如八股学习可以加 `recite` 背诵型、`fill_blank` 填空型）
-
-**需要新增的数据字段（建议）**：
-```json
-{
-  "category": "computer_history | chinese_history | bagu",
-  "era": "1940s | 明朝 | 春秋",
-  "difficulty": 1-3,
-  "related_events": ["关联的其他事件名"],
-  "learning_points": ["知识点1", "知识点2"]
-}
-```
-
-## Writer 产出的 GameScript 结构
-
-这是 artist_pre 和 coder 消费的核心数据：
-
-```json
-{
-  "event": "事件名",
-  "year": 年份,
-  "location": "地点",
-  "protagonist": "主角",
-  "antagonist": "对抗方",
-  "core_conflict": "核心冲突",
-  "atmosphere": "氛围描述",
-  "opening_hook": "开场悬念句",
-
-  "puzzle": {
-    "type": "cipher|sequence|logic",
-    "surface": "谜题表皮描述",
-    "answer": "正确答案",
-    "items_count": 元素数量,
-    "items_labels": ["标签"],
-    "hints": [{"level":1,"text":"..."}, {"level":2,"text":"..."}, {"level":3,"text":"..."}],
-    "max_attempts": 3
-  },
-
-  "history_facts": {
-    "title": "小故事标题",
-    "story": "200-300字口语化故事",
-    "key_point": "一句话核心收获",
-    "fun_fact": "趣闻"
-  },
-
-  "victory_line": "通关台词",
-  "defeat_line": "失败台词",
-
-  "visual": {
-    "palette": ["#色1","#色2","#色3","#色4","#色5"],
-    "mood": "视觉情绪",
-    "decorations": ["装饰1","装饰2"]
-  }
-}
-```
+在 `verified_events.json` 或 `verified_bagu.json` 中添加新条目即可。`aliases` 字段覆盖常见叫法，`keywords` 覆盖模糊匹配。`event_to_search_results()` 自动处理。
