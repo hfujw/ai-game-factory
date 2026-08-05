@@ -64,12 +64,15 @@ npm run dev
 ```
 backend/app/
 ├── main.py              FastAPI + WebSocket 入口
-├── orchestrator.py      编排 Agent（思考→行动→反馈主循环，全 async）
+├── agents/
+│   └── orchestrator.py  编排 Agent（思考→行动→反馈主循环，全 async）
 ├── tools.py             5 个工具（search/design/compose/render/verify）
 ├── llm_client.py        AsyncOpenAI 封装（DeepSeek）
 ├── ws_manager.py        WebSocket 连接管理（safe send）
-├── web_search.py        Bing→DuckDuckGo 搜索（零 API Key）
-└── kb.py                33 个示例话题知识库
+├── mcp/
+│   └── web_search.py    Bing→DuckDuckGo 搜索（零 API Key）
+└── knowledge/
+    └── kb.py            33 个示例话题知识库
 frontend/src/
 ├── App.jsx              主布局（液态玻璃 + 光标聚光灯）
 ├── components/
