@@ -38,7 +38,7 @@ export function DecisionLog({ messages, autoCollapse }: { messages:Message[]; au
       transition={{ type: "spring", stiffness: 260, damping: 28 }}
       className={`fixed bottom-6 right-6 z-[100] pointer-events-auto ${
         open
-          ? 'w-[420px] max-h-[68vh]'
+          ? 'w-[420px] max-w-[90vw] max-h-[68vh]'
           : 'w-auto'
       }`}
     >
@@ -60,6 +60,13 @@ export function DecisionLog({ messages, autoCollapse }: { messages:Message[]; au
               </div>
               <ChevronDown size={14} className="text-white/20" />
             </div>
+
+            {/* 步骤进度线 */}
+            {toolMsgs.length > 0 && (
+              <div className="px-4 pt-3 pb-1">
+                <StepProgress messages={messages} />
+              </div>
+            )}
 
             {/* 日志流 */}
             <div ref={bodyRef} className="overflow-y-auto px-4 py-3 space-y-2" style={{ maxHeight: '58vh' }}>
@@ -130,5 +137,55 @@ export function DecisionLog({ messages, autoCollapse }: { messages:Message[]; au
         )}
       </AnimatePresence>
     </motion.div>
+  )
+}
+
+// ── 步骤进度线 ──
+
+const STEPS = ['search', 'design', 'compose', 'render', 'verify'] as const
+const STEP_LABELS: Record<string, string> = {
+  search: '搜', design: '定', compose: '书', render: '绘', verify: '鉴',
+}
+
+function StepProgress({ messages }: { messages: { agent: string; type?: string }[] }) {
+  const completed = new Set<string>()
+  let active: string | null = null
+
+  for (const m of messages) {
+    // heartbeat 类型不计为完成（与文案无关，后端改文案也不影响）
+    if (m.type === 'heartbeat') continue
+    if (m.type === 'tool_result' && STEPS.includes(m.agent as any)) {
+      completed.add(m.agent)
+    }
+    if (m.type === 'thinking' && STEPS.includes(m.agent as any)) {
+      active = m.agent
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-center gap-0">
+      {STEPS.map((step, i) => {
+        const done = completed.has(step)
+        const current = active === step
+        return (
+          <div key={step} className="flex items-center">
+            {/* 连接线 */}
+            {i > 0 && (
+              <div className={`w-4 h-px ${done || current ? 'bg-lime-400/40' : 'bg-white/[0.06]'}`} />
+            )}
+            {/* 节点 */}
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] transition-all duration-500 ${
+              done
+                ? 'bg-lime-400/20 text-lime-400 border border-lime-400/30'
+                : current
+                ? 'bg-lime-400/15 text-lime-400 border border-lime-400/50 shadow-[0_0_8px_rgba(163,230,53,0.3)]'
+                : 'bg-white/[0.03] text-white/15 border border-white/[0.06]'
+            }`}>
+              {done ? '✓' : STEP_LABELS[step]}
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }

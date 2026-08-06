@@ -1,6 +1,6 @@
 [
   {
-    "event": "1940年 Turing 破译德军 Enigma 密码",
+    "title": "1940年 Turing 破译德军 Enigma 密码",
     "keywords": [
       "Turing",
       "Enigma",
@@ -42,7 +42,7 @@
     "visual_anchor": "昏暗地下室里，绿色台灯照亮满墙密码表，电报机滴答作响，桌上散落着烧焦的草稿纸"
   },
   {
-    "event": "1989年圣诞节 Guido 发明了 Python",
+    "title": "1989年圣诞节 Guido 发明了 Python",
     "keywords": [
       "Guido",
       "Python",
@@ -81,7 +81,7 @@
     "visual_anchor": "1989年圣诞节的阿姆斯特丹，窗外飘着雪，Guido在温暖的客厅里给新语言起名字"
   },
   {
-    "event": "1974年 Cerf 和 Kahn 画出 TCP 草图",
+    "title": "1974年 Cerf 和 Kahn 画出 TCP 草图",
     "keywords": [
       "Cerf",
       "Kahn",
@@ -122,7 +122,7 @@
     "visual_anchor": "斯坦福实验室里，两人对着一张信封争论，铅笔在纸上画出连接世界的线条"
   },
   {
-    "event": "1991年 Linus 写下了 Linux 的第一行代码",
+    "title": "1991年 Linus 写下了 Linux 的第一行代码",
     "keywords": [
       "Linus",
       "Linux",
@@ -161,7 +161,7 @@
     "visual_anchor": "赫尔辛基冬夜，21岁的Linus裹着毯子坐在386前，屏幕上闪烁着绿色的内核代码"
   },
   {
-    "event": "1995年 Java 的诞生",
+    "title": "1995年 Java 的诞生",
     "keywords": [
       "Java",
       "James Gosling",
@@ -201,7 +201,7 @@
     "visual_anchor": "硅谷Sun公司，Gosling团队在白色书写板前激烈争论，桌上散落着星巴克咖啡杯"
   },
   {
-    "event": "1970年 Codd 发明了关系型数据库",
+    "title": "1970年 Codd 发明了关系型数据库",
     "keywords": [
       "Codd",
       "关系模型",
@@ -241,7 +241,7 @@
     "visual_anchor": "IBM研究室的深夜，Codd在打字机前逐字敲出那篇只有11页却改变数据库历史的论文"
   },
   {
-    "event": "1958年 McCarthy 发明了 Lisp",
+    "title": "1958年 McCarthy 发明了 Lisp",
     "keywords": [
       "McCarthy",
       "Lisp",
@@ -279,7 +279,7 @@
     "visual_anchor": "MIT的教室里，McCarthy在满墙公式前写下递归定义，一台巨大的IBM 704在角落里运转"
   },
   {
-    "event": "1971年 Bayer 发明了 B 树",
+    "title": "1971年 Bayer 发明了 B 树",
     "keywords": [
       "Bayer",
       "B树",
@@ -318,7 +318,7 @@
     "visual_anchor": "波音公司的工程师办公桌，Bayer面对巨大的数据索引图纸，用精密的线条画出树状结构"
   },
   {
-    "event": "2009年 antirez 花了两个星期写了 Redis",
+    "title": "2009年 antirez 花了两个星期写了 Redis",
     "keywords": [
       "antirez",
       "Redis",
@@ -355,7 +355,7 @@
     "visual_anchor": "西西里岛的海景阳台上，antirez喝着意式浓缩，觉得MySQL太慢于是花两周写了Redis"
   },
   {
-    "event": "1993年 第一款图形浏览器 Mosaic 发布",
+    "title": "1993年 第一款图形浏览器 Mosaic 发布",
     "keywords": [
       "Mosaic",
       "Marc Andreessen",
@@ -395,7 +395,7 @@
     "visual_anchor": "伊利诺伊大学NCSA实验室，22岁的Andreessen盯着屏幕上第一个能显示图片的浏览器，互联网从此有了面孔"
   },
   {
-    "event": "1946年 ENIAC 诞生——第一台通用电子计算机",
+    "title": "1946年 ENIAC 诞生——第一台通用电子计算机",
     "keywords": [
       "ENIAC",
       "电子计算机",
@@ -432,7 +432,7 @@
     "visual_anchor": "巨大的机房中，成排的真空管闪烁着橙黄光芒，工程师在插线板间穿梭"
   },
   {
-    "event": "1969年 ARPANET 发送了第一条消息——互联网诞生",
+    "title": "1969年 ARPANET 发送了第一条消息——互联网诞生",
     "keywords": [
       "ARPANET",
       "互联网",
@@ -471,7 +471,7 @@
     "visual_anchor": "深夜UCLA实验室，Kline对电话说'收到L了吗？'，屏幕光标等待人类历史上第一次跨计算机通信"
   },
   {
-    "event": "1984年 Macintosh 发布——图形界面的革命",
+    "title": "1984年 Macintosh 发布——图形界面的革命",
     "keywords": [
       "Macintosh",
       "图形界面",
@@ -510,7 +510,7 @@
     "visual_anchor": "超级碗广告中，女运动员的铁锤划破灰色空气，砸向屏幕上的老大哥——Macintosh在爆炸般的白光中诞生"
   },
   {
-    "event": "2004年 Facebook 在哈佛宿舍诞生",
+    "title": "2004年 Facebook 在哈佛宿舍诞生",
     "keywords": [
       "Facebook",
       "Zuckerberg",
@@ -546,7 +546,7 @@
     "visual_anchor": "深夜哈佛宿舍，Zuckerberg穿着拖鞋盯着代码，屏幕蓝光映在墙上"
   },
   {
-    "event": "2015年 OpenAI 成立",
+    "title": "2015年 OpenAI 成立",
     "keywords": [
       "OpenAI",
       "Altman",
@@ -584,7 +584,7 @@
     "visual_anchor": "旧金山会议室里，Altman在白板上写下AGI三个字母，窗外是硅谷永恒的蓝天"
   },
   {
-    "event": "1998年 Google 在车库里诞生",
+    "title": "1998年 Google 在车库里诞生",
     "keywords": [
       "Google",
       "PageRank",
@@ -622,7 +622,7 @@
     "visual_anchor": "加州车库里，Page和Brin坐在二手办公桌前，身后是用乐高积木搭成的服务器架"
   },
   {
-    "event": "2007年 iPhone 重新定义了手机",
+    "title": "2007年 iPhone 重新定义了手机",
     "keywords": [
       "iPhone",
       "Jobs",
@@ -659,7 +659,7 @@
     "visual_anchor": "聚光灯下的舞台上，Jobs举起一台没有键盘的黑色玻璃板，指尖滑动时整个世界屏住了呼吸"
   },
   {
-    "event": "2017年 Transformer 论文改变了 AI 世界",
+    "title": "2017年 Transformer 论文改变了 AI 世界",
     "keywords": [
       "Transformer",
       "Attention",
@@ -696,7 +696,7 @@
     "visual_anchor": "Google Brain会议室里，Vaswani在玻璃板上画出注意力机制的矩阵图——像宇宙星图一样复杂而优雅"
   },
   {
-    "event": "1968年 Intel 成立——微处理器的诞生",
+    "title": "1968年 Intel 成立——微处理器的诞生",
     "keywords": [
       "Intel",
       "微处理器",
@@ -734,7 +734,7 @@
     "visual_anchor": "硅谷实验室里，Noyce在显微镜下检查指甲盖大小的硅片，上面蚀刻着两千多个晶体管——这是人类在沙子上建造的城市"
   },
   {
-    "event": "2008年 GitHub 改变了程序员协作方式",
+    "title": "2008年 GitHub 改变了程序员协作方式",
     "keywords": [
       "GitHub",
       "Git",
@@ -771,7 +771,7 @@
     "visual_anchor": "旧金山周末编程活动现场，三个年轻人在白板上画出一个简单的网页界面——中间有一个绿色合并按钮"
   },
   {
-    "event": "2022年 ChatGPT 上线掀起了 AI 革命",
+    "title": "2022年 ChatGPT 上线掀起了 AI 革命",
     "keywords": [
       "ChatGPT",
       "GPT",
@@ -807,7 +807,7 @@
     "visual_anchor": "2022年冬天的旧金山，OpenAI办公室灯火通明，屏幕上的用户数字以每秒数百人的速度跳动"
   },
   {
-    "event": "1983年 GNU 计划开启了自由软件运动",
+    "title": "1983年 GNU 计划开启了自由软件运动",
     "keywords": [
       "GNU",
       "Stallman",
@@ -843,7 +843,7 @@
     "visual_anchor": "MIT深夜实验室，Stallman在终端前敲下一行行代码——他在为一种叫自由的东西写宪法"
   },
   {
-    "event": "2001年 维基百科创建——人类知识的共同编辑",
+    "title": "2001年 维基百科创建——人类知识的共同编辑",
     "keywords": [
       "Wikipedia",
       "维基",
@@ -879,7 +879,7 @@
     "visual_anchor": "佛罗里达简陋办公室里，Wales盯着屏幕上第一篇Wiki文章——他刚给全人类发了一张可以无限编辑的白纸"
   },
   {
-    "event": "1998年 Winamp 让 MP3 音乐席卷全球",
+    "title": "1998年 Winamp 让 MP3 音乐席卷全球",
     "keywords": [
       "Winamp",
       "MP3",
@@ -915,7 +915,7 @@
     "visual_anchor": "1998年大学宿舍里，Frankel的电脑屏幕上跳动着Winamp的绿色均衡器"
   },
   {
-    "event": "1999年 Napster 引发了音乐产业的革命",
+    "title": "1999年 Napster 引发了音乐产业的革命",
     "keywords": [
       "Napster",
       "P2P",
@@ -951,7 +951,7 @@
     "visual_anchor": "波士顿大学宿舍里，Fanning盯着屏幕上的用户数字飞速增长"
   },
   {
-    "event": "1991年 Unicode 统一了全球文字编码",
+    "title": "1991年 Unicode 统一了全球文字编码",
     "keywords": [
       "Unicode",
       "编码",
@@ -989,7 +989,7 @@
     "visual_anchor": "苹果办公室白板上，Becker画出了一张覆盖全球的字符映射表——拉丁、阿拉伯、汉字、楔形文字"
   },
   {
-    "event": "2014年 Docker 改变了软件部署方式",
+    "title": "2014年 Docker 改变了软件部署方式",
     "keywords": [
       "Docker",
       "容器",

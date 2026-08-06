@@ -6,8 +6,8 @@ import os
 _KB_DIR = os.path.dirname(__file__)
 
 def _name(event: dict) -> str:
-    """统一获取事件名。"""
-    return event.get("event", event.get("title", ""))
+    """获取事件名。"""
+    return event.get("title", "")
 
 
 def _prep_keywords(event: dict):
@@ -94,7 +94,7 @@ def get_event_by_keyword(text: str, category: str = None) -> dict | None:
 
 def event_to_search_results(event: dict) -> list[dict]:
     """统一处理所有事件为 search_results 格式。"""
-    title = event.get("event", event.get("title", ""))
+    title = event.get("title", "")
     content_parts = []
     key_facts = []
 

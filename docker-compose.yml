@@ -1,0 +1,26 @@
+# 一键启动：docker-compose up
+# 一键停止：docker-compose down
+
+version: "3.8"
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend/logs:/app/logs        # 日志持久化
+      - ./backend/demos:/app/demos      # demo HTML 持久化
+    restart: unless-stopped
+
+  # 未来扩展：切 Redis 时取消下面的注释
+  # redis:
+  #   image: redis:7-alpine
+  #   restart: unless-stopped
+  #   volumes:
+  #     - redis_data:/data
+  #
+  # volumes:
+  #   redis_data:

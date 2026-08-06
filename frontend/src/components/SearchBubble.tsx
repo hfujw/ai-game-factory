@@ -20,9 +20,13 @@ export function SearchBubble({ onGenerate, isGenerating, onCancel }: Props) {
           className="px-4 py-3.5 bg-white/[0.08] border border-white/[0.15] rounded-2xl text-white/60 hover:text-red-400 hover:border-red-400/40 transition-all">
           <X className="w-4 h-4" /></button>
       ) : (
-        <button type="submit" disabled={!value.trim()}
-          className="px-5 py-3.5 bg-lime-600 hover:bg-lime-500 text-white text-sm font-medium rounded-2xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2 shadow-lg shadow-lime-500/20">
-          <Zap className="w-4 h-4" />生成</button>
+        <div className="flex flex-col items-center gap-1">
+          <button type="submit" disabled={!value.trim()}
+            className="px-5 py-3.5 bg-lime-600 hover:bg-lime-500 text-white text-sm font-medium rounded-2xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2 shadow-lg shadow-lime-500/20">
+            <Zap className="w-4 h-4" />生成
+          </button>
+          <span className="text-[9px] text-white/15">免费试用 · 每日 1 次</span>
+        </div>
       )}
     </form>
   )

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { useWebSocket } from './hooks/useWebSocket'
 import RevealLayer from './components/RevealLayer'
 import { StoryPanel } from './components/StoryPanel'
@@ -12,7 +13,25 @@ const BG_BASE   = '/images/base.jpg'
 const BG_REVEAL = '/images/reveal.jpg'
 
 export default function App() {
-  const { statuses, messages, gameCode, error, isGenerating, sendEvent, cancel, dismiss } = useWebSocket()
+  const { statuses, messages, pageHtml, streamingHtml, error, isGenerating, sendEvent, loadDemo, cancel, dismiss } = useWebSocket()
+
+  // 演示话题 — 和后端 main.py DEMO_TOPICS 保持同步
+  const DEMO_TOPICS = ['秦始皇修长城','Turing 破译 Enigma','Python 装饰器','郑和下西洋','世界杯历届冠军']
+  const [demoReady, setDemoReady] = useState(new Set())
+
+  useEffect(() => {
+    fetch('/api/demos').then(r => r.json()).then(d => {
+      setDemoReady(new Set(d.demos.filter((x) => x.ready).map((x) => x.name)))
+    }).catch(() => {})
+  }, [])
+
+  const handleTopicSelect = (topic) => {
+    if (DEMO_TOPICS.includes(topic)) {
+      loadDemo(topic)
+    } else {
+      sendEvent(topic)
+    }
+  }
 
   // ── 光标聚光灯（同 lithos-replica）──
   const mouse  = useRef({ x:-999, y:-999 })
@@ -65,23 +84,27 @@ export default function App() {
             <SearchBubble onGenerate={sendEvent} isGenerating={isGenerating} onCancel={cancel} />
             <div className="flex flex-wrap justify-center gap-2">
               {['秦始皇修长城','Turing 破译 Enigma','Python 装饰器','郑和下西洋','世界杯历届冠军'].map(t => (
-                <button key={t} onClick={() => sendEvent(t)} disabled={isGenerating}
-                  className="px-3 py-1 text-[11px] text-white/25 hover:text-white/55 bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.04] hover:border-white/[0.10] rounded-full transition-all disabled:opacity-20">
-                  {t}
-                </button>
+                <motion.button
+                  key={t}
+                  onClick={() => loadDemo(t)}
+                  whileHover={{ boxShadow: '0 0 16px rgba(251,191,36,0.15), 0 0 4px rgba(251,191,36,0.1)' }}
+                  className="px-3 py-1 text-[11px] text-amber-200/40 hover:text-amber-200/70 bg-amber-400/[0.02] hover:bg-amber-400/[0.06] border border-amber-400/[0.06] hover:border-amber-400/[0.15] rounded-full transition-all">
+                  {t}{demoReady.has(t) && <span className="ml-1 text-amber-400/50">✓</span>}
+                </motion.button>
               ))}
             </div>
           </div>
 
           {/* z-50: 事件标签 */}
           <div className="absolute z-50 inset-0 pointer-events-none">
-            <EventTags onSelect={sendEvent} disabled={isGenerating} />
+            <EventTags onSelect={handleTopicSelect} disabled={isGenerating} />
           </div>
 
           {/* z-50: 生成结果展示 */}
           <StoryPanel
-            visible={!!gameCode}
-            gameCode={gameCode}
+            visible={!!pageHtml}
+            pageHtml={pageHtml}
+            streamingHtml={streamingHtml}
             isGenerating={isGenerating}
             onClose={dismiss}
           />
@@ -91,12 +114,12 @@ export default function App() {
             visible={!!error}
             reason={error?.reason||''}
             suggestions={error?.suggestions||[]}
-            onRetry={sendEvent}
+            onRetry={handleTopicSelect}
             onDismiss={dismiss}
           />
 
           {/* z-100: 决策轨迹 */}
-          <DecisionLog messages={messages} autoCollapse={!!gameCode} />
+          <DecisionLog messages={messages} autoCollapse={!!pageHtml} />
 
         </section>
       </div>

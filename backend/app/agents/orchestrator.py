@@ -10,8 +10,8 @@
 import asyncio
 import json
 import logging
-from app.llm_client import chat, chat_json, _strip_markdown_fence
-from app.tools import tool_search, tool_design, tool_compose, tool_render, tool_verify
+from app.llm_client import chat, _strip_markdown_fence
+from app.tools import tool_search, tool_design, tool_compose, tool_verify
 from app.knowledge.kb import get_event_by_keyword, event_to_search_results
 
 logger = logging.getLogger(__name__)
@@ -37,13 +37,18 @@ ORCHESTRATOR_SYSTEM_PROMPT = """你是一个视觉叙事引擎。用户给你一
 - 同一工具连续3次失败 → 必须换策略
 
 【决策指南】
-- 先search还是先design？简单主题可以直接design，复杂主题先search
-- 素材够了就别再search了
+- **你是决策中心**。orchestrator 只执行和兜底（预算耗尽/步数超限），其他决定都你来做。
+- **搜索是可选的增强，不是必经步骤**。有把握的话题（秦始皇/Python 装饰器）直接 design。
+- 不确定的话题（最新新闻/冷门知识）选 search 验证。最多搜 8 次。
+- 搜不到？你可以：换词重搜 / 跳过搜索用自身知识 / 素材太少→诚实模式。
+- **搜不到≠继续搜**。不要用相同关键词重复搜索。换个角度搜一次还不行，就该用自身知识了。
 - verify说"visual不好看"→退render；"来源不足"→退compose；"形式不合适"→退design
 - 预算紧张时用最简方案
-- 【诚实模式】如果系统提示素材与主题不相关：禁止 design/compose，直接 render 一个诚实页面（标注资料有限，不编造），只生成一次不重试
+- 【诚实模式】**你**认为素材不够且你也没把握时：直接 render 诚实页面，标注"资料有限"，不编造，只生成一次
 
 输出JSON。thought 字段是你每步决策前的内心独白。
+- 如果你想进入诚实模式（素材不够且你没把握），在 JSON 中加 `"honest": true`，tool 会被自动设为 render
+- 其他时候不需要 honest 字段
 - 第1步：可以介绍主题背景（如"我对这个话题的了解是…"）
 - 第2步及以后：禁止重复"用户想了解XXX""我对XXX不太熟悉"等开场白。直接从上一
   步的结果开始——"上一步搜到了5条素材，但都是朱姓百科而非朱子钦本人，所以现在…"
@@ -61,24 +66,42 @@ async def orchestrator_node(state: dict) -> dict:
     push = state.get("_push")
 
     ctx = {
-        "user_input": user_input,
-        "material": [],
-        "design": None,
-        "content": None,
-        "html": "",
-        "visual": None,
-        "steps": 0,
-        "max_steps": 20,
-        "budget_spent": 0.0,
-        "budget_total": 1.0,
-        "passed": False,
-        "issues": [],
-        "tool_history": [],
+    "session_id": state.get("session_id", ""),
+    "user_input": user_input,
+    "_push": push,
+    "material": [],
+    "design": None,
+    "content": None,
+    "html": "",
+    "visual": None,
+    "steps": 0,
+    "max_steps": 20,
+    "budget_spent": 0.0,
+    "budget_total": 1.0,
+    "passed": False,
+    "issues": [],
+    "tool_history": [],
+    "cost_records": state.get("_cost_records", []),
     }
 
+    # 本地知识库：先关键词（快），后语义向量（准）
     kb_event = get_event_by_keyword(user_input)
     if kb_event:
         ctx["material"].extend(event_to_search_results(kb_event))
+    else:
+        # 关键词没命中——试向量语义检索（"嬴政"→"秦始皇"）
+        from app.knowledge.vector_store import vector_search
+        try:
+            hits = vector_search(user_input, top_k=3, min_distance=1.5)
+            for h in hits:
+                event = get_event_by_keyword(h["title"])
+                if event:
+                    ctx["material"].extend(event_to_search_results(event))
+            if hits:
+                logger.info("向量匹配=%d条 | session=%s | query=%s",
+                            len(hits), ctx["session_id"], user_input[:30])
+        except Exception as e:
+            logger.debug("向量搜索跳过: %s", e)
 
     while ctx["steps"] < ctx["max_steps"] and ctx["budget_spent"] < ctx["budget_total"]:
 
@@ -90,6 +113,25 @@ async def orchestrator_node(state: dict) -> dict:
             # 1. 让LLM决定下一步
             decision = await _decide(ctx)
 
+        # 1.5. LLM 主动选择诚实模式
+        if decision.get("honest") and not ctx.get("honest_mode"):
+            ctx["honest_mode"] = True
+            ctx["material_level"] = {"level": "low", "reason": "LLM自评素材不足", "suggestion": "诚实呈现"}
+            if push:
+                await push({"type": "thinking", "step": ctx["steps"] + 1,
+                            "thought": f"LLM 判断：素材不足以支撑完整叙事，主动进入诚实模式。",
+                            "tool": "system", "budget": ctx["budget_spent"]})
+            decision["tool"] = "render"  # 诚实模式直接 render
+
+        # 1.6. 搜索次数硬拦截（prompt 提醒 + 代码兜底双保险）
+        search_count = sum(1 for h in ctx["tool_history"] if h["tool"] == "search")
+        if decision.get("tool") == "search" and search_count >= ctx.get("search_max", 8):
+            decision["tool"] = "design"
+            if push:
+                await push({"type": "thinking", "step": ctx["steps"] + 1,
+                            "thought": f"已搜索{search_count}次，达到上限。orchestrator 强制切换为 design——LLM 请基于现有素材或自身知识继续。",
+                            "tool": "system", "budget": ctx["budget_spent"]})
+
         # 2. ⚡ 思考先推到前端（await 确保用户看到了）
         thought = decision.get("thought", "")
         tool_name = decision.get("tool", "search")
@@ -99,20 +141,22 @@ async def orchestrator_node(state: dict) -> dict:
 
         # 3. 推"进行中"，启动心跳
         if push:
-            await push({"type": "tool_result", "step": ctx["steps"] + 1, "tool": tool_name,
-                        "summary": f"执行中…（{tool_name}）", "budget": ctx["budget_spent"]})
+            await push({"type": "heartbeat", "step": ctx["steps"] + 1, "tool": tool_name,
+                        "budget": ctx["budget_spent"]})
         # 心跳：长操作期间每 4 秒推一次 pulse
         async def heartbeat():
             for _ in range(15):
                 await asyncio.sleep(4)
                 if push:
-                    await push({"type": "tool_result", "step": ctx["steps"] + 1, "tool": tool_name,
-                                "summary": f"执行中…（{tool_name}）", "budget": ctx["budget_spent"]})
+                    await push({"type": "heartbeat", "step": ctx["steps"] + 1, "tool": tool_name,
+                                "budget": ctx["budget_spent"]})
         hb = asyncio.create_task(heartbeat())
 
-        # 4. 执行工具
-        result = await _execute_tool(tool_name, decision.get("params", {}), ctx)
-        hb.cancel()
+        # 4. 执行工具（finally 确保 heartbeat 一定被清理）
+        try:
+            result = await _execute_tool(tool_name, decision.get("params", {}), ctx)
+        finally:
+            hb.cancel()
 
         # 5. 推送结果
         ctx["steps"] += 1
@@ -122,16 +166,14 @@ async def orchestrator_node(state: dict) -> dict:
             await push({"type": "tool_result", "step": ctx["steps"], "tool": tool_name,
                         "summary": _summarize(result), "budget": ctx["budget_spent"]})
 
-        # 5. 搜索后评估素材质量
+        # 5. 搜索后评估素材质量（信息通知 LLM，不替 LLM 做决策）
         if tool_name == "search" and not ctx.get("honest_mode"):
             eval_result = _evaluate_material(ctx["material"], ctx["user_input"])
-            if eval_result["level"] in ("low", "none"):
-                ctx["honest_mode"] = True
-                ctx["material_level"] = eval_result
-                if push:
-                    await push({"type": "thinking", "step": ctx["steps"],
-                                "thought": f"⚠️ {eval_result['reason']}。进入诚实模式：不编造内容，基于现有素材做降级呈现。",
-                                "tool": "system", "budget": ctx["budget_spent"]})
+            ctx["material_level"] = eval_result
+            if eval_result["level"] in ("low", "none") and push:
+                await push({"type": "thinking", "step": ctx["steps"],
+                            "thought": f"🔍 本轮搜索结果：{eval_result['reason']}。{eval_result['suggestion']}。LLM 自行决定下一步——换词重搜、跳过搜索直接用自身知识、或进入诚实模式。",
+                            "tool": "system", "budget": ctx["budget_spent"]})
 
         # 6. 硬检查
         if tool_name == "render":
@@ -147,9 +189,10 @@ async def orchestrator_node(state: dict) -> dict:
             ctx["issues"] = result.get("issues", [])
             if ctx["passed"] or ctx.get("honest_mode"):
                 if ctx.get("honest_mode"):
-                    logger.info("诚实模式=通过（跳过内容匹配检查）")
+                    logger.info("orchestrator=pass | session=%s | mode=honest", ctx["session_id"])
                 else:
-                    logger.info("编排=通过！%d步 ¥%.2f", ctx["steps"], ctx["budget_spent"])
+                    logger.info("orchestrator=pass | session=%s | steps=%d | cost=¥%.4f",
+                                ctx["session_id"], ctx["steps"], ctx["budget_spent"])
                 if push:
                     await push({"type": "complete", "html": ctx.get("html", ""),
                                 "steps": ctx["steps"], "budget": ctx["budget_spent"]})
@@ -165,11 +208,13 @@ async def orchestrator_node(state: dict) -> dict:
             # ❌ verify 没通过 → 强制回退，不让 LLM 决定
             ctx["render_fail_count"] = ctx.get("render_fail_count", 0) + 1
             rollback = result.get("rollback_target", "render")
-            logger.warning("verify失败 #%d → 强制回退到 %s", ctx["render_fail_count"], rollback)
+            logger.warning("verify=fail | session=%s | fail_count=%d | rollback=%s",
+                           ctx["session_id"], ctx["render_fail_count"], rollback)
 
             # 连续2次 verify 失败 → 不是技术问题，是素材问题，直接终止
             if ctx["render_fail_count"] >= 2:
-                logger.warning("连续%d次verify失败，素材不足，强制终止", ctx["render_fail_count"])
+                logger.warning("orchestrator=abort | session=%s | verify_fail_count=%d | reason=material_mismatch",
+                               ctx["session_id"], ctx["render_fail_count"])
                 if push:
                     await push({"type": "thinking", "step": ctx["steps"],
                                 "thought": f"连续{ctx['render_fail_count']}次生成均被审查驳回——不是技术问题，是现有素材与用户主题不匹配。建议换一个信息更充分的主题。",
@@ -204,7 +249,8 @@ async def orchestrator_node(state: dict) -> dict:
     # 循环结束但没通过 → 推"死亡报告"到 DecisionLog
     search_count = sum(1 for h in ctx['tool_history'] if h['tool'] == 'search')
     reason = f"搜了 {search_count} 次没找到直接素材" if search_count >= 2 else "多次生成尝试仍不满意"
-    logger.info("编排=超限 %d步 ¥%.2f passed=%s reason=%s", ctx["steps"], ctx["budget_spent"], ctx["passed"], reason)
+    logger.info("orchestrator=exhausted | session=%s | steps=%d | cost=¥%.4f | reason=%s",
+                ctx["session_id"], ctx["steps"], ctx["budget_spent"], reason)
     if push:
         await push({"type": "thinking", "step": ctx["steps"],
                     "thought": f"⚠️ 无法完成「{ctx['user_input']}」：{reason}。建议换一个信息更充分的主题试试。",
@@ -282,7 +328,12 @@ HTML长度：{len(ctx.get('html',''))}字符 | 上次验证：{'通过' if ctx['
         summary += f"\n⚠️ 已搜索 {search_count} 次（最近2次无结果），禁止再搜！基于现有素材做设计，或诚实说素材不足。"
 
     try:
-        result = await chat(summary, system=ORCHESTRATOR_SYSTEM_PROMPT, temperature=0.5)
+        result = await chat(
+            summary, 
+            system=ORCHESTRATOR_SYSTEM_PROMPT, 
+            temperature=0.5,
+            session_records=ctx.get("cost_records"),   # ← 新增
+        )
         result = _strip_markdown_fence(result)
         decision = json.loads(result)
         # 兜底：如果 LLM 还是重复开场白，截断
@@ -301,8 +352,15 @@ HTML长度：{len(ctx.get('html',''))}字符 | 上次验证：{'通过' if ctx['
                     break
         return decision
     except Exception as e:
-        logger.warning("编排决策失败: %s, 降级为search", e)
-        return {"thought": f"决策异常({e})，先搜素材", "tool": "search",
+        ctx["_decide_fail_count"] = ctx.get("_decide_fail_count", 0) + 1
+        logger.warning("decide=fail | session=%s | fail_count=%d | error=%s",
+                       ctx["session_id"], ctx["_decide_fail_count"], e)
+        # 连续3次失败 → LLM 不可用，触发诚实模式终止
+        if ctx["_decide_fail_count"] >= 3:
+            ctx["honest_mode"] = True
+            return {"thought": "LLM连续故障，进入诚实模式", "tool": "render",
+                    "params": {}}
+        return {"thought": f"决策异常，降级搜索(第{ctx['_decide_fail_count']}次)", "tool": "search",
                 "params": {"query": ctx["user_input"], "reason": "初始搜索", "depth": "quick"}}
 
 
@@ -312,7 +370,7 @@ async def _execute_tool(tool_name: str, params: dict, ctx: dict) -> dict:
     ctx["budget_spent"] += cost
 
     if tool_name == "search":
-        result = tool_search(
+        result = await tool_search(
             query=params.get("query", ctx["user_input"]),
             reason=params.get("reason", ""),
             depth=params.get("depth", "quick"),
@@ -322,23 +380,37 @@ async def _execute_tool(tool_name: str, params: dict, ctx: dict) -> dict:
         return result
 
     elif tool_name == "design":
-        result = await tool_design(ctx["material"], ctx["user_input"])
+        result = await tool_design(ctx["material"], ctx["user_input"],
+                                   session_records=ctx.get("cost_records"))
         ctx["design"] = result
         return result
 
     elif tool_name == "compose":
-        result = await tool_compose(ctx["material"], ctx["design"] or {}, ctx["user_input"])
+        result = await tool_compose(ctx["material"], ctx["design"] or {}, ctx["user_input"],
+                                    session_records=ctx.get("cost_records"))
         ctx["content"] = result
         return result
 
     elif tool_name == "render":
-        result = await tool_render(ctx["design"] or {}, ctx["content"] or {}, ctx.get("visual"))
-        if result.get("html"):
+        from app.tools import tool_render_stream
+        result = None
+        async for frame in tool_render_stream(
+            ctx["design"] or {}, ctx["content"] or {}, ctx.get("visual"),
+            session_records=ctx.get("cost_records"),
+        ):
+            if frame.get("complete"):
+                result = frame
+            else:
+                # 逐段推送给前端——页面"长出来"
+                push = ctx.get("_push")
+                if push:
+                    await push({"type": "html_chunk", "html": frame["html"]})
+        if result and result.get("html"):
             ctx["html"] = result["html"]
-        return result
+        return result or {"tool": "render", "html": "", "complete": False, "length": 0}
 
     elif tool_name == "verify":
-        result = tool_verify(ctx.get("html", ""), ctx.get("content") or {})
+        result = await tool_verify(ctx.get("html", ""), ctx.get("content") or {})
         return result
 
     return {"error": f"未知工具: {tool_name}"}

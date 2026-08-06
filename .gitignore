@@ -1,7 +1,9 @@
 venv/
 node_modules/
 .env
+backend/.env
 test_output.html
+_last_failed_game.html
 __pycache__/
 *.pyc
 *.pyo
@@ -13,10 +15,10 @@ frontend/public/bg.mp4
 lithos-replica/
 frontend-demo/
 frontend-demo-v2/
-__pycache__/
-*.pyc
-backend/.env
-dist/
-.vite/
-_last_failed_game.html
 backend/logs/
+backend/demos/*.html
+backend/chroma_data/
+.agents/
+.playwright-mcp/
+.claude/
+skills-lock.json

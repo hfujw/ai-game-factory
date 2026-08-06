@@ -36,7 +36,6 @@ Python话题格式：
     "translation": "代码解释",
     "annotations": ["知识点1", "知识点2"]
   },
-  "difficulty": 1,
   "keywords": ["关键词"], "aliases": ["别名"],
   "atmosphere_tags": ["终端", "代码", "IDE"],
   "key_props": ["终端", "光标"],

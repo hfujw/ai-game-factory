@@ -3,11 +3,7 @@
     "version": "1.0.0",
     "category": "bagu",
     "description": "Python 面试八股文知识库",
-    "total_events": 8,
-    "difficulty_range": [
-      1,
-      4
-    ]
+    "total_events": 8
   },
   "events": [
     {
@@ -15,12 +11,6 @@
       "category": "bagu",
       "title": "可变对象 vs 不可变对象",
       "source": "Python 面试高频",
-      "difficulty": 1,
-      "difficulty_dimensions": {
-        "memory": 1,
-        "comprehension": 1,
-        "structure": 1
-      },
       "content": {
         "original": "a = [1, 2, 3]\nb = a\nb[0] = 9\nprint(a)",
         "translation": "列表是可变对象，赋值操作传递的是引用而非副本。修改 b 会影响 a。",
@@ -110,12 +100,6 @@
       "category": "bagu",
       "title": "深拷贝 vs 浅拷贝",
       "source": "Python 面试高频",
-      "difficulty": 2,
-      "difficulty_dimensions": {
-        "memory": 2,
-        "comprehension": 2,
-        "structure": 1
-      },
       "content": {
         "original": "import copy\na = [[1, 2], [3, 4]]\nb = copy.copy(a)\nc = copy.deepcopy(a)\nb[0][0] = 9\nprint(a[0][0])  # 9\nprint(c[0][0])  # 1",
         "translation": "浅拷贝只复制最外层容器，嵌套对象仍共享引用。深拷贝递归复制所有嵌套对象。",
@@ -206,12 +190,6 @@
       "category": "bagu",
       "title": "装饰器语法糖",
       "source": "Python 面试高频",
-      "difficulty": 2,
-      "difficulty_dimensions": {
-        "memory": 2,
-        "comprehension": 2,
-        "structure": 2
-      },
       "content": {
         "original": "def my_decorator(func):\n    def wrapper(*args, **kwargs):\n        print('Before call')\n        result = func(*args, **kwargs)\n        print('After call')\n        return result\n    return wrapper\n\n@my_decorator\ndef say_hello():\n    print('Hello')",
         "translation": "装饰器是一个返回函数的高阶函数。@decorator 语法糖等价于 func = decorator(func)。",
@@ -311,12 +289,6 @@
       "category": "bagu",
       "title": "生成器与 yield",
       "source": "Python 面试高频",
-      "difficulty": 3,
-      "difficulty_dimensions": {
-        "memory": 2,
-        "comprehension": 3,
-        "structure": 2
-      },
       "content": {
         "original": "def fibonacci(n):\n    a, b = 0, 1\n    for _ in range(n):\n        yield a\n        a, b = b, a + b\n\nfor num in fibonacci(5):\n    print(num)",
         "translation": "生成器使用 yield 关键字，每次产生一个值后暂停，下次从暂停处继续。节省内存。",
@@ -411,12 +383,6 @@
       "category": "bagu",
       "title": "GIL 全局解释器锁",
       "source": "Python 面试高频",
-      "difficulty": 3,
-      "difficulty_dimensions": {
-        "memory": 2,
-        "comprehension": 3,
-        "structure": 1
-      },
       "content": {
         "original": "import threading\n\ndef cpu_bound_task():\n    count = 0\n    for _ in range(10**7):\n        count += 1\n\nthreads = [threading.Thread(target=cpu_bound_task) for _ in range(2)]\nfor t in threads:\n    t.start()\nfor t in threads:\n    t.join()",
         "translation": "GIL 保证同一时刻只有一个线程执行 Python 字节码。多线程对 CPU 密集型任务无加速效果。",
@@ -505,12 +471,6 @@
       "category": "bagu",
       "title": "上下文管理器",
       "source": "Python 面试高频",
-      "difficulty": 3,
-      "difficulty_dimensions": {
-        "memory": 2,
-        "comprehension": 3,
-        "structure": 2
-      },
       "content": {
         "original": "class FileOpener:\n    def __init__(self, filename, mode):\n        self.filename = filename\n        self.mode = mode\n\n    def __enter__(self):\n        self.file = open(self.filename, self.mode)\n        return self.file\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        self.file.close()\n        return True",
         "translation": "上下文管理器通过 __enter__ 和 __exit__ 实现 with 语句支持，确保资源正确释放。",
@@ -604,12 +564,6 @@
       "category": "bagu",
       "title": "描述符与 @property",
       "source": "Python 面试高频",
-      "difficulty": 4,
-      "difficulty_dimensions": {
-        "memory": 3,
-        "comprehension": 4,
-        "structure": 3
-      },
       "content": {
         "original": "class Temperature:\n    def __init__(self, celsius):\n        self._celsius = celsius\n\n    @property\n    def fahrenheit(self):\n        return (self._celsius * 9/5) + 32\n\n    @fahrenheit.setter\n    def fahrenheit(self, value):\n        self._celsius = (value - 32) * 5/9\n\nt = Temperature(100)\nprint(t.fahrenheit)  # 212.0",
         "translation": "@property 将方法转换为属性访问，实现 getter/setter 逻辑而不改变调用方式。",
@@ -702,12 +656,6 @@
       "category": "bagu",
       "title": "可变默认参数陷阱",
       "source": "Python 面试高频",
-      "difficulty": 3,
-      "difficulty_dimensions": {
-        "memory": 2,
-        "comprehension": 3,
-        "structure": 2
-      },
       "content": {
         "original": "def append_item(item, lst=[]):\n    lst.append(item)\n    return lst\n\nprint(append_item(1))  # [1]\nprint(append_item(2))  # [1, 2]  # Bug!",
         "translation": "Python 的默认参数在函数定义时求值，且只创建一次。使用可变对象作为默认参数会导致所有调用共享同一个对象。",

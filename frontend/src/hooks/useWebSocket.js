@@ -6,40 +6,29 @@ const WS_URL = `ws${location.protocol === 'https:' ? 's' : ''}://${window.locati
 export function useWebSocket() {
   const [statuses, setStatuses] = useState({})
   const [messages, setMessages] = useState([])
-  const [gameCode, setGameCode] = useState(null)
+  const [pageHtml, setPageHtml] = useState(null)
+  const [streamingHtml, setStreamingHtml] = useState('')
   const [error, setError] = useState(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const wsRef = useRef(null)
   const logIdRef = useRef(0)
-  const generatingRef = useRef(false)  // 避免 stale closure
+  const generatingRef = useRef(false)
 
   const lastSend = useRef(0)
+  const reconnectRef = useRef(0)
+  const eventRef = useRef('')
 
-  const sendEvent = useCallback((eventText) => {
-    if (!eventText.trim()) return
-
-    // 防抖：1秒内不重复触发
-    const now = Date.now()
-    if (now - lastSend.current < 1000) return
-    lastSend.current = now
-
+  const connectWS = useCallback((eventText) => {
     // 关闭旧的 socket
     if (wsRef.current) {
       wsRef.current.close()
     }
 
-    // Reset state
-    setStatuses({})
-    setMessages([])
-    setGameCode(null)
-    setError(null)
-    setIsGenerating(true)
-    generatingRef.current = true
-
     const ws = new WebSocket(WS_URL)
     wsRef.current = ws
 
     ws.onopen = () => {
+      reconnectRef.current = 0
       ws.send(JSON.stringify({ event: eventText }))
     }
 
@@ -65,8 +54,13 @@ export function useWebSocket() {
             }])
             break
 
-          case 'game_ready':
-            setGameCode(data.game_code)
+          case 'html_chunk':
+            setStreamingHtml(data.html || '')
+            break
+
+          case 'page_ready':
+            setPageHtml(data.page_html)
+            setStreamingHtml('')
             setIsGenerating(false)
             generatingRef.current = false
             break
@@ -113,19 +107,51 @@ export function useWebSocket() {
     }
 
     ws.onerror = () => {
-      setError({ reason: 'WebSocket 连接失败，请确认后端已启动', suggestions: [] })
-      setIsGenerating(false)
-      generatingRef.current = false
+      // 不立即报错——让 onclose 处理重连逻辑
     }
 
     ws.onclose = () => {
-      // 用 ref 避免 stale closure
-      if (generatingRef.current) {
+      if (!generatingRef.current) return
+      const MAX_RECONNECT = 3
+      if (reconnectRef.current < MAX_RECONNECT) {
+        const delay = 1000 * Math.pow(2, reconnectRef.current)
+        reconnectRef.current++
+        setMessages(prev => [...prev, {
+          id: ++logIdRef.current,
+          time: new Date().toLocaleTimeString(),
+          agent: 'system',
+          detail: `连接断开，${delay / 1000}s 后重连（第 ${reconnectRef.current}/${MAX_RECONNECT} 次）`,
+        }])
+        setTimeout(() => connectWS(eventRef.current), delay)
+      } else {
+        setError({ reason: 'WebSocket 连接失败，请确认后端已启动', suggestions: [] })
         setIsGenerating(false)
         generatingRef.current = false
       }
     }
   }, [])
+
+  const sendEvent = useCallback((eventText) => {
+    if (!eventText.trim()) return
+
+    // 防抖：1秒内不重复触发
+    const now = Date.now()
+    if (now - lastSend.current < 1000) return
+    lastSend.current = now
+
+    // Reset state
+    setStatuses({})
+    setMessages([])
+    setPageHtml(null)
+    setStreamingHtml('')
+    setError(null)
+    setIsGenerating(true)
+    generatingRef.current = true
+    reconnectRef.current = 0
+    eventRef.current = eventText
+
+    connectWS(eventText)
+  }, [connectWS])
 
   const dismiss = useCallback(() => {
     if (wsRef.current) {
@@ -134,7 +160,8 @@ export function useWebSocket() {
     }
     setIsGenerating(false)
     generatingRef.current = false
-    setGameCode(null)
+    setPageHtml(null)
+    setStreamingHtml('')
     setError(null)
     setStatuses({})
     setMessages([])
@@ -142,5 +169,41 @@ export function useWebSocket() {
 
   const cancel = useCallback(() => dismiss(), [dismiss])
 
-  return { statuses, messages, gameCode, error, isGenerating, sendEvent, cancel, dismiss }
+  // ── Demo 模式：加载预生成 HTML，零成本即时展示 ──
+  const loadDemo = useCallback(async (topic) => {
+    // 关闭正在运行的生成
+    if (wsRef.current) {
+      wsRef.current.close()
+      wsRef.current = null
+    }
+
+    // 重置状态
+    setStatuses({})
+    setMessages([])
+    setPageHtml(null)
+    setStreamingHtml('')
+    setError(null)
+    setIsGenerating(false)
+    generatingRef.current = false
+
+    try {
+      const resp = await fetch(`/api/demos/${encodeURIComponent(topic)}`)
+      if (!resp.ok) throw new Error('demo not found')
+      const data = await resp.json()
+
+      setPageHtml(data.html)
+      const tag = data.cached ? '📖' : '⏳'
+      const note = data.cached ? '' : '（待生成，本地运行一次即可替换）'
+      setMessages([{
+        id: ++logIdRef.current,
+        time: new Date().toLocaleTimeString(),
+        agent: 'system',
+        detail: `${tag} 演示：「${topic}」${note}`,
+      }])
+    } catch {
+      setError({ reason: '演示内容加载失败，请确认后端已启动', suggestions: [] })
+    }
+  }, [])
+
+  return { statuses, messages, pageHtml, streamingHtml, error, isGenerating, sendEvent, loadDemo, cancel, dismiss }
 }

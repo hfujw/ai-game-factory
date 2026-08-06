@@ -108,12 +108,10 @@ async def list_events(category: str = None):
     events = get_all_events(category=category if category else None)
     result = []
     for e in events:
-        name = e.get("event", e.get("title", ""))
-        difficulty = e.get("difficulty", 0)
+        name = e.get("title", "")
         result.append({
             "name": name,
             "category": e.get("category", "computer_history"),
-            "difficulty": difficulty,
         })
     return {"events": result, "total": len(result)}
 
