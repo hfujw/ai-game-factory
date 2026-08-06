@@ -158,18 +158,6 @@ frontend/src/
 
 ---
 
-## 踩过的坑
-
-| 现象 | 根因 | 修复 |
-|------|------|------|
-| 搜索"秦始皇修长城"返回空 | Bing API 国内不可用 | 换 Tavily + LLM 自身知识兜底 |
-| iframe 实时刷新频闪 | React state 更新触发整页重渲染 | `contentDocument.write` 直接写 DOM，绕开 React 渲染周期 |
-| 并发场景费用统计互相污染 | 全局 `_cost_records` 被多连接共享 | 每个 session 独立 `session_cost_records` 记账 |
-| 心跳脉冲被当成工具完成 | `tool_result` 类型复用 | 新增 `heartbeat` 类型，前后端按类型过滤 |
-| LLM 重复开场白（"我想了解…"） | DeepSeek 输出模板化 | orchestrator 检测关键词自动截断 + prompt 明确禁止 |
-
----
-
 ## 配置项
 
 | 环境变量 | 默认值 | 说明 |
