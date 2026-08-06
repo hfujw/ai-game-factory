@@ -67,13 +67,16 @@ async def chat(prompt: str, system: str = "", model: str = None, temperature: fl
 
     last_error = None
     t0 = time.monotonic()
+    from app.circuit_breaker import llm_breaker
     for attempt in range(MAX_RETRIES + 1):
         try:
-            response = await client.chat.completions.create(
+            response = await llm_breaker.call(
+                client.chat.completions.create(
                 model=model or DEFAULT_MODEL,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
+                )
             )
 
             content = response.choices[0].message.content
@@ -134,24 +137,44 @@ async def chat_json(prompt: str, system: str = "", model: str = None,
 
 
 async def chat_stream(prompt: str, system: str = "", model: str = None,
-                      temperature: float = 0.3, max_tokens: int = 16384):
-    """流式输出——逐 chunk yield 文本片段。只给 tool_render 用。
+                      temperature: float = 0.3, max_tokens: int = 16384,
+                      session_records: list[dict] | None = None,
+                      label: str = "unknown"):
+    """流式输出——逐 chunk yield 文本片段。
 
-    不修改 chat() 签名：chat() 保持返回 str，所有其他调用方不受影响。
+    不修改 chat() 签名。session_records 写入独立账本，label 用于 Prometheus。
     """
+    import time as _time
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
-    response = await client.chat.completions.create(
-        model=model or DEFAULT_MODEL,
-        messages=messages,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        stream=True,
-    )
+    t0 = _time.monotonic()
+    try:
+        response = await client.chat.completions.create(
+            model=model or DEFAULT_MODEL,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=True,
+            stream_options={"include_usage": True},
+        )
 
-    async for chunk in response:
-        if chunk.choices and chunk.choices[0].delta.content:
-            yield chunk.choices[0].delta.content
+        total_tokens = 0
+        async for chunk in response:
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
+            if chunk.usage:
+                total_tokens = chunk.usage.total_tokens
+
+        # Prometheus 埋点
+        from app.metrics import LLM_REQUESTS, LLM_LATENCY
+        LLM_LATENCY.labels(tool=label).observe(_time.monotonic() - t0)
+        LLM_REQUESTS.labels(status="success", tool=label).inc()
+
+    except Exception:
+        from app.metrics import LLM_REQUESTS, LLM_LATENCY
+        LLM_LATENCY.labels(tool=label).observe(_time.monotonic() - t0)
+        LLM_REQUESTS.labels(status="error", tool=label).inc()
+        raise

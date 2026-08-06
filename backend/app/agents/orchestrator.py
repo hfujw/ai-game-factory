@@ -10,9 +10,10 @@
 import asyncio
 import json
 import logging
+from app.config import settings
 from app.llm_client import chat_stream, _strip_markdown_fence
 from app.tools import tool_search, tool_design, tool_compose, tool_verify
-from app.knowledge.kb import get_event_by_keyword, event_to_search_results
+from app.knowledge.kb import get_event_by_keyword, event_to_search_results, _name
 
 logger = logging.getLogger(__name__)
 
@@ -75,9 +76,9 @@ async def orchestrator_node(state: dict) -> dict:
     "html": "",
     "visual": None,
     "steps": 0,
-    "max_steps": 20,
+    "max_steps": settings.max_steps,
     "budget_spent": 0.0,
-    "budget_total": 1.0,
+    "budget_total": settings.budget_total,
     "passed": False,
     "issues": [],
     "tool_history": [],
@@ -97,6 +98,20 @@ async def orchestrator_node(state: dict) -> dict:
         if ctx.get("force_verify"):
             ctx.pop("force_verify")
             decision = {"thought": "诚实模式：自动验证", "tool": "verify", "params": {}}
+        elif ctx.get("force_next_tool"):
+            # 强制回退：跳过 LLM 决策，直接执行指定工具
+            tool_name = ctx.pop("force_next_tool")
+            if push:
+                await push({"type": "tool_result", "step": ctx["steps"] + 1, "tool": tool_name,
+                            "summary": f"强制回退执行 {tool_name}…", "budget": ctx["budget_spent"]})
+            result = await _execute_tool(tool_name, decision.get("params", {}), ctx)
+            ctx["steps"] += 1
+            ctx["tool_history"].append({"step": ctx["steps"], "tool": tool_name,
+                                        "result_summary": _summarize(result)})
+            if push:
+                await push({"type": "tool_result", "step": ctx["steps"], "tool": tool_name,
+                            "summary": _summarize(result), "budget": ctx["budget_spent"]})
+            continue
         else:
             # 1. 让LLM决定下一步
             decision = await _decide(ctx)
@@ -216,23 +231,7 @@ async def orchestrator_node(state: dict) -> dict:
                             "thought": f"审查发现{len(ctx['issues'])}个问题，系统强制回退到「{rollback}」重做。",
                             "tool": "system", "budget": ctx["budget_spent"]})
             ctx["force_next_tool"] = rollback
-            continue  # 跳过 _decide，直接进入下一轮循环执行回退工具
-
-        # 6. 强制回退执行
-        if ctx.get("force_next_tool"):
-            tool_name = ctx.pop("force_next_tool")
-            # 继续执行这个工具（不通过 _decide 决策）
-            if push:
-                await push({"type": "tool_result", "step": ctx["steps"] + 1, "tool": tool_name,
-                            "summary": f"强制回退执行 {tool_name}…", "budget": ctx["budget_spent"]})
-            result = await _execute_tool(tool_name, decision.get("params", {}), ctx)
-            ctx["steps"] += 1
-            ctx["tool_history"].append({"step": ctx["steps"], "tool": tool_name,
-                                        "result_summary": _summarize(result)})
-            if push:
-                await push({"type": "tool_result", "step": ctx["steps"], "tool": tool_name,
-                            "summary": _summarize(result), "budget": ctx["budget_spent"]})
-            continue  # 回退执行完，重新进入循环（下一步会走正常的 verify）
+            continue  # 跳到循环顶部，force_next_tool 块接管执行
 
     # 循环结束但没通过 → 推"死亡报告"到 DecisionLog
     search_count = sum(1 for h in ctx['tool_history'] if h['tool'] == 'search')

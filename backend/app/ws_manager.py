@@ -56,9 +56,6 @@ class WSManager:
         logger.debug("WebSocket 已连接 [%s]（当前 %d 个连接）", session_id, len(self.connections))
         return True
 
-    async def disconnect(self, session_id: str):
-        self.connections.pop(session_id, None)
-
     async def shutdown(self, timeout: float = 5.0):
         """优雅关闭——通知所有客户端后断开。"""
         for sid, ws in list(self.connections.items()):

@@ -59,6 +59,13 @@ class Settings(BaseSettings):
     tool_render_temperature: float = Field(0.3, ge=0, le=2)
     tool_render_max_tokens: int = Field(16384, ge=100, le=32768)
 
+    @field_validator("log_prompts", mode="before")
+    @classmethod
+    def parse_bool(cls, v):
+        if isinstance(v, str):
+            return v.lower() in ("1", "true", "yes", "on")
+        return bool(v)
+
     @field_validator("deepseek_api_key")
     @classmethod
     def validate_key(cls, v: str) -> str:
