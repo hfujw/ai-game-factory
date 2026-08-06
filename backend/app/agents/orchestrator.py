@@ -121,13 +121,9 @@ async def orchestrator_node(state: dict) -> dict:
         if decision.get("honest") and not ctx.get("honest_mode"):
             ctx["honest_mode"] = True
             ctx["material_level"] = {"level": "low", "reason": "LLM自评素材不足", "suggestion": "诚实呈现"}
-            if push:
-                await push({"type": "thinking", "step": ctx["steps"] + 1,
-                            "thought": f"LLM 判断：素材不足以支撑完整叙事，主动进入诚实模式。",
-                            "tool": "system", "budget": ctx["budget_spent"]})
-            decision["tool"] = "render"  # 诚实模式直接 render
+            decision["tool"] = "render"  # 不单独 push——后面的统一 push 会推
 
-        # 1.6. 搜索次数硬拦截（prompt 提醒 + 代码兜底双保险）
+        # 1.6. 搜索次数硬拦截
         search_count = sum(1 for h in ctx["tool_history"] if h["tool"] == "search")
         if decision.get("tool") == "search" and search_count >= ctx["search_max"]:
             decision["tool"] = "design"
@@ -136,8 +132,12 @@ async def orchestrator_node(state: dict) -> dict:
                             "thought": f"已搜索{search_count}次，达到上限。orchestrator 强制切换为 design——LLM 请基于现有素材或自身知识继续。",
                             "tool": "system", "budget": ctx["budget_spent"]})
 
-        # 2. ⚡ 思考先推到前端（await 确保用户看到了）
+        # 2. ⚡ 思考先推到前端（只 push 一次，且确保是纯文本）
         thought = decision.get("thought", "")
+        if isinstance(thought, dict):
+            thought = thought.get("thought", str(thought))
+        if not isinstance(thought, str):
+            thought = str(thought)
         tool_name = decision.get("tool", "search")
         if push:
             await push({"type": "thinking", "step": ctx["steps"] + 1, "thought": thought,
