@@ -92,16 +92,16 @@ export function StoryPanel({ visible, pageHtml, streamingHtml, isGenerating, onC
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="absolute top-3 right-3 z-10 flex gap-1.5">
+            <div className="absolute top-3 right-3 z-10 flex gap-1 bg-black/30 backdrop-blur-sm rounded-xl p-0.5">
               <button onClick={() => setMinimized(true)}
-                className="p-2 rounded-lg bg-white/[0.08] hover:bg-white/[0.18] text-white/50 hover:text-amber-400 transition-colors" title="最小化">
-                <Minus size={14} /></button>
+                className="p-2 rounded-lg hover:bg-white/[0.12] text-white/60 hover:text-amber-300 transition-colors" title="最小化">
+                <Minus size={15} /></button>
               <button onClick={() => setFullscreen(true)}
-                className="p-2 rounded-lg bg-white/[0.08] hover:bg-white/[0.18] text-white/50 hover:text-white/80 transition-colors" title="全屏">
-                <Maximize2 size={14} /></button>
+                className="p-2 rounded-lg hover:bg-white/[0.12] text-white/60 hover:text-lime-300 transition-colors" title="全屏">
+                <Maximize2 size={15} /></button>
               <button onClick={onClose}
-                className="p-2 rounded-lg bg-white/[0.08] hover:bg-red-500/20 text-white/50 hover:text-red-400 transition-colors" title="关闭">
-                <X size={14} /></button>
+                className="p-2 rounded-lg hover:bg-red-500/20 text-white/60 hover:text-red-400 transition-colors" title="关闭">
+                <X size={15} /></button>
             </div>
             <iframe srcDoc={pageHtml || ''} sandbox="allow-scripts" title="视觉故事"
               className="w-full h-full border-none bg-black" style={{ borderRadius: 16 }} />
@@ -113,7 +113,7 @@ export function StoryPanel({ visible, pageHtml, streamingHtml, isGenerating, onC
       {visible && isFullscreen && (
         <div className="relative w-full h-full">
           <button onClick={() => setFullscreen(false)}
-            className="absolute top-4 right-4 z-20 p-2.5 rounded-lg bg-white/[0.1] hover:bg-red-500/25 text-white/50 hover:text-red-400 transition-colors" title="退出全屏">
+            className="absolute top-4 right-4 z-20 p-2.5 rounded-lg bg-black/40 backdrop-blur-sm hover:bg-red-500/25 text-white/60 hover:text-red-400 transition-colors" title="退出全屏">
             <Minimize2 size={16} /></button>
           <iframe srcDoc={pageHtml || ''} sandbox="allow-scripts" title="视觉故事-全屏"
             className="w-full h-full border-none bg-black" />
