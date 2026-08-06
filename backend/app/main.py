@@ -236,7 +236,13 @@ async def generate_page(websocket: WebSocket):
         async def push(msg: dict):
             """实时推送到前端。"""
             nonlocal failed_sent
-            if msg.get("type") == "heartbeat":
+            if msg.get("type") == "thinking_stream":
+                await ws_manager.send_json(session_id, {
+                    "type": "thinking_stream", "step": msg["step"],
+                    "chunk": msg["chunk"], "tool": msg["tool"],
+                    "budget": msg["budget"],
+                })
+            elif msg.get("type") == "heartbeat":
                 await ws_manager.send_json(session_id, {
                     "type": "heartbeat", "tool": msg["tool"],
                     "step": msg["step"], "budget": msg["budget"],

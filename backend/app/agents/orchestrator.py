@@ -10,7 +10,7 @@
 import asyncio
 import json
 import logging
-from app.llm_client import chat, _strip_markdown_fence
+from app.llm_client import chat_stream, _strip_markdown_fence
 from app.tools import tool_search, tool_design, tool_compose, tool_verify
 from app.knowledge.kb import get_event_by_keyword, event_to_search_results
 
@@ -84,24 +84,12 @@ async def orchestrator_node(state: dict) -> dict:
     "cost_records": state.get("_cost_records", []),
     }
 
-    # 本地知识库：先关键词（快），后语义向量（准）
+    # 本地知识库：关键词匹配。没命中就空着——LLM 自己决定搜不搜。
+    # 向量检索不自动预填充——KB 只有计算机史，中国历史查询会被匹配到错误条目。
     kb_event = get_event_by_keyword(user_input)
     if kb_event:
         ctx["material"].extend(event_to_search_results(kb_event))
-    else:
-        # 关键词没命中——试向量语义检索（"嬴政"→"秦始皇"）
-        from app.knowledge.vector_store import vector_search
-        try:
-            hits = vector_search(user_input, top_k=3, min_distance=1.5)
-            for h in hits:
-                event = get_event_by_keyword(h["title"])
-                if event:
-                    ctx["material"].extend(event_to_search_results(event))
-            if hits:
-                logger.info("向量匹配=%d条 | session=%s | query=%s",
-                            len(hits), ctx["session_id"], user_input[:30])
-        except Exception as e:
-            logger.debug("向量搜索跳过: %s", e)
+        logger.info("KB命中 | session=%s | topic=%s", ctx["session_id"], _name(kb_event))
 
     while ctx["steps"] < ctx["max_steps"] and ctx["budget_spent"] < ctx["budget_total"]:
 
@@ -328,13 +316,20 @@ HTML长度：{len(ctx.get('html',''))}字符 | 上次验证：{'通过' if ctx['
         summary += f"\n⚠️ 已搜索 {search_count} 次（最近2次无结果），禁止再搜！基于现有素材做设计，或诚实说素材不足。"
 
     try:
-        result = await chat(
-            summary, 
-            system=ORCHESTRATOR_SYSTEM_PROMPT, 
+        # 流式思考——前端 DecisionLog 逐字显示
+        push = ctx.get("_push")
+        accumulated = ""
+        async for chunk in chat_stream(
+            summary,
+            system=ORCHESTRATOR_SYSTEM_PROMPT,
             temperature=0.5,
-            session_records=ctx.get("cost_records"),   # ← 新增
-        )
-        result = _strip_markdown_fence(result)
+        ):
+            accumulated += chunk
+            if push:
+                await push({"type": "thinking_stream", "step": ctx["steps"] + 1,
+                            "chunk": chunk, "tool": "decide", "budget": ctx["budget_spent"]})
+
+        result = _strip_markdown_fence(accumulated)
         decision = json.loads(result)
         # 兜底：如果 LLM 还是重复开场白，截断
         thought = decision.get("thought", "")

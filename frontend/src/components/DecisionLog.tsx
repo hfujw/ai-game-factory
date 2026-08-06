@@ -30,7 +30,7 @@ export function DecisionLog({ messages, autoCollapse }: { messages:Message[]; au
     if (atBottom) el.scrollTop = el.scrollHeight
   }, [messages, open])
 
-  const toolMsgs = messages.filter(m => m.type === 'thinking' || m.type === 'tool_result')
+  const toolMsgs = messages.filter(m => m.type === 'thinking' || m.type === 'thinking_stream' || m.type === 'tool_result')
 
   return (
     <motion.div
@@ -80,7 +80,7 @@ export function DecisionLog({ messages, autoCollapse }: { messages:Message[]; au
                 </div>
               ) : (
                 toolMsgs.map((m) => {
-                  const isThinking = m.type === 'thinking'
+                  const isThinking = m.type === 'thinking' || m.type === 'thinking_stream'
                   const Icon = TOOL_ICONS[m.agent] || Brain
                   return (
                     <motion.div

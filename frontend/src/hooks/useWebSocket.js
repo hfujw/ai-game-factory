@@ -74,6 +74,27 @@ export function useWebSocket() {
             generatingRef.current = false
             break
 
+          case 'thinking_stream':
+            // 逐字追加到同一条 thinking 消息
+            setMessages(prev => {
+              const last = prev[prev.length - 1]
+              if (last && last.type === 'thinking_stream' && last.agent === data.tool) {
+                // 追加到上一条
+                const updated = [...prev]
+                updated[updated.length - 1] = { ...last, detail: last.detail + data.chunk }
+                return updated
+              }
+              // 新建一条
+              return [...prev, {
+                id: ++logIdRef.current,
+                time: new Date().toLocaleTimeString(),
+                agent: data.tool || 'decide',
+                detail: data.chunk || '',
+                type: 'thinking_stream',
+              }]
+            })
+            break
+
           case 'thinking':
             setMessages(prev => [...prev, {
               id: ++logIdRef.current,
