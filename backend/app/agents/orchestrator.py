@@ -77,6 +77,7 @@ async def orchestrator_node(state: dict) -> dict:
     "visual": None,
     "steps": 0,
     "max_steps": settings.max_steps,
+    "search_max": settings.search_max,
     "budget_spent": 0.0,
     "budget_total": settings.budget_total,
     "passed": False,
@@ -128,7 +129,7 @@ async def orchestrator_node(state: dict) -> dict:
 
         # 1.6. 搜索次数硬拦截（prompt 提醒 + 代码兜底双保险）
         search_count = sum(1 for h in ctx["tool_history"] if h["tool"] == "search")
-        if decision.get("tool") == "search" and search_count >= ctx.get("search_max", 8):
+        if decision.get("tool") == "search" and search_count >= ctx["search_max"]:
             decision["tool"] = "design"
             if push:
                 await push({"type": "thinking", "step": ctx["steps"] + 1,
@@ -322,6 +323,8 @@ HTML长度：{len(ctx.get('html',''))}字符 | 上次验证：{'通过' if ctx['
             summary,
             system=ORCHESTRATOR_SYSTEM_PROMPT,
             temperature=0.5,
+            session_records=ctx.get("cost_records"),
+            label="decide",
         ):
             accumulated += chunk
             if push:

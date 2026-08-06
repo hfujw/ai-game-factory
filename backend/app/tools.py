@@ -318,6 +318,8 @@ async def tool_render_stream(
             prompt,
             system="你是前端工程师。直接输出完整HTML。",
             temperature=0.3,
+            session_records=session_records,
+            label="render",
         ):
             accumulated += chunk
             # 每积累 300 字符或遇到 > 时推送一次（保证标签完整）
