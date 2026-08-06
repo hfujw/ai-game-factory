@@ -104,7 +104,7 @@ async def orchestrator_node(state: dict) -> dict:
             if push:
                 await push({"type": "tool_result", "step": ctx["steps"] + 1, "tool": tool_name,
                             "summary": f"强制回退执行 {tool_name}…", "budget": ctx["budget_spent"]})
-            result = await _execute_tool(tool_name, decision.get("params", {}), ctx)
+            result = await _execute_tool(tool_name, {}, ctx)  # 不依赖上一轮的旧 params
             ctx["steps"] += 1
             ctx["tool_history"].append({"step": ctx["steps"], "tool": tool_name,
                                         "result_summary": _summarize(result)})
