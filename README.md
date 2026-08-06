@@ -57,8 +57,7 @@ git clone https://github.com/hfujw/ai-native-workflow.git
 cd ai-native-workflow
 
 # 配 Key（只需要做一次）
-cp backend/.env.example backend/.env
-# 编辑 backend/.env，填 DEEPSEEK_API_KEY=sk-xxxxxxxx
+复制 backend/.env.example → 重命名为 backend/.env → 打开填入 DEEPSEEK_API_KEY=sk-xxxxxxxx
 
 # 启动
 docker-compose up
