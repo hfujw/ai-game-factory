@@ -50,78 +50,54 @@ flowchart TD
 
 ## 快速开始
 
-### 前置要求
-
-- Python 3.11+
-- Node.js 18+
-- DeepSeek API Key（[注册地址](https://platform.deepseek.com)）
-- Tavily Search API Key（[注册地址](https://tavily.com)，免费 1000 次/月，不配也能用）
-
-### 1. 克隆项目
+### 方式一：Docker（推荐——不需要装 Python/Node，一行命令）
 
 ```bash
 git clone https://github.com/hfujw/ai-native-workflow.git
 cd ai-native-workflow
-```
 
-### 2. 配置环境变量
-
-```bash
-# 复制配置模板
+# 配 Key（只需要做一次）
 cp backend/.env.example backend/.env
+# 编辑 backend/.env，填 DEEPSEEK_API_KEY=sk-xxxxxxxx
 
-# 编辑 backend/.env，填入你的 Key：
-# DEEPSEEK_API_KEY=sk-xxxxxxxx
-# TAVILY_API_KEY=tvly-xxxxxxxx（可选——不配也能跑，LLM 会用自身知识）
+# 启动
+docker-compose up
 ```
 
-### 3. 安装依赖
+浏览器打开 `http://localhost:8000`。Docker 自带 Python、Playwright 浏览器、所有依赖——你不需要装任何东西。
+
+### 方式二：手动启动（开发/改代码时用）
+
+**前置要求**：Python 3.11+ · Node.js 18+ · DeepSeek API Key · Tavily Key（可选）
 
 ```bash
-# 后端
+git clone https://github.com/hfujw/ai-native-workflow.git
+cd ai-native-workflow
+
+# 1. 配 Key
+cp backend/.env.example backend/.env
+# 编辑 backend/.env：DEEPSEEK_API_KEY=sk-xxxxxxxx
+
+# 2. 后端
 cd backend
 python -m venv venv
-venv\Scripts\pip install -r requirements.txt   # Windows
-# source venv/bin/pip install -r requirements.txt  # macOS/Linux
-
-# 前端
-cd ../frontend
-npm install
-```
-
-### 4. 启动
-
-```bash
-# 终端 1：后端（端口 8001）
-cd backend
+venv\Scripts\pip install -r requirements.txt      # Windows
+# python3 -m venv venv && source venv/bin/pip install -r requirements.txt  # macOS/Linux
 venv\Scripts\python -m uvicorn app.main:app --port 8001
 
-# 终端 2：前端（端口 5173）
+# 3. 前端（新终端）
 cd frontend
+npm install
 npm run dev
 ```
 
-浏览器打开 `http://localhost:5173`，输入任意主题即可。
+浏览器打开 `http://localhost:5173`。
 
 ### 首次启动说明
 
-- ChromaDB 中文模型（~400MB）首次会自动从 `hf-mirror.com` 下载，走国内镜像不需要代理
-- 下载失败不影响使用——语义检索不可用，关键词检索 + LLM 自身知识仍然正常工作
-- Tavily Key 不配也没关系——搜索返回空，LLM 用自己的知识生成
-
----
-
-## Docker 部署
-
-```bash
-# 一键启动
-docker-compose up
-
-# 后台运行
-docker-compose up -d
-```
-
-浏览器打开 `http://localhost:8000`。
+- ChromaDB 中文模型（~400MB）首次自动从 `hf-mirror.com` 下载，国内镜像不需代理
+- 下载失败不影响使用——语义检索不可用，关键词 + LLM 自身知识仍然工作
+- Tavily Key 不配也没关系——搜索返回空，LLM 用自己的知识
 
 ---
 
@@ -194,7 +170,6 @@ frontend/src/
 | `MAX_STEPS` | 20 | Agent 最大循环步数 |
 | `GENERATION_TIMEOUT` | 300 | 单次生成超时（秒） |
 | `LOG_PROMPTS` | 0 | 设为 1 记录完整 prompt（调试用） |
-| `STATE_BACKEND` | memory | memory / redis（多实例部署时） |
 
 ---
 
