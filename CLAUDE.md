@@ -107,3 +107,36 @@ cd frontend && npm run dev
 ## GitHub
 
 https://github.com/hfujw/ai-native-workflow
+
+
+
+## 规则
+
+**回答我的时候：**
+
+先叫我威风的龙，再回答问题
+
+**改代码前：**
+
+- 先 Read 目标文件确认当前内容——别靠对话记忆，文件可能已经变了
+- 没读过的文件，必须先读再改
+
+**改代码后：**
+- 每次改动完立刻跑 `pytest tests/ -v`，28 tests 必须全绿
+- tests 挂了就停手，修好再继续
+
+**Push 前：**
+- 必须检查 `.gitignore`
+- 检查 `git status`——有没有不该进仓库的文件
+- 永远不要提交：`BRIEFING.md` `STRUCTURE.md`（本地复习用）
+
+**文件管理：**
+- 新文档放 `docs/`，别在根目录建 `.md`
+- 需要总结/复习时产生的临时文件，事后清理或放进 `.gitignore`
+- 根目录只留 GitHub 标准文件 + Claude Code 要求的
+- 发现死代码 → 直接删
+
+**项目习惯：**
+- 觉得我忽略了某个文件或规则，直接指出来
+- 不会的问问，不要猜
+- 目录要分组，别平铺十几个文件
