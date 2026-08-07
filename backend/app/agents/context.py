@@ -15,7 +15,7 @@ class AgentState(TypedDict, total=False):
 
     # ── 素材与知识库 ──
     material: list[dict]                 # 搜索结果 + KB 匹配
-    material_level: NotRequired[dict]    # _evaluate_material 的评估结果
+    material_level: NotRequired[dict]    # evaluate_material 的评估结果
     honest_mode: NotRequired[bool]       # 是否已进入诚实模式
 
     # ── 生成中间产物 ──

@@ -1,24 +1,52 @@
+# ── Python ──
 venv/
-node_modules/
-.env
-backend/.env
-test_output.html
-_last_failed_game.html
 __pycache__/
 *.pyc
 *.pyo
+*.egg-info/
 dist/
+*.egg
+
+# ── Node ──
+node_modules/
 .vite/
-frontend/public/bg.mp4
-.playwright-mcp/
+
+# ── 环境变量（包含 API Key，绝对不能提交）──
+.env
+backend/.env
+
+# ── 运行时产物 ──
+backend/logs/
+backend/chroma_data/
+backend/demos/*.html
+backend/data/
+
+# ── 测试输出 ──
+test_output.html
+_last_failed_game.html
 *.png
+*.jpg
+*.jpeg
+
+# ── 项目源码 dump（不是项目本体）──
+project-source-full.txt
+
+# ── 大文件 ──
+frontend/public/bg.mp4
+
+# ── 旧前端实验 ──
 lithos-replica/
 frontend-demo/
 frontend-demo-v2/
-backend/logs/
-backend/demos/*.html
-backend/chroma_data/
+
+# ── 工具状态（不提交）──
+.claude/
 .agents/
 .playwright-mcp/
-.claude/
 skills-lock.json
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo

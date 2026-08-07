@@ -13,7 +13,7 @@ const BG_BASE   = '/images/base.jpg'
 const BG_REVEAL = '/images/reveal.jpg'
 
 export default function App() {
-  const { statuses, messages, pageHtml, streamingHtml, error, isGenerating, sendEvent, loadDemo, cancel, dismiss } = useWebSocket()
+  const { messages, pageHtml, streamingHtml, error, isGenerating, sendEvent, loadDemo, cancel, dismiss } = useWebSocket()
 
   // 演示话题 — 和后端 main.py DEMO_TOPICS 保持同步
   const DEMO_TOPICS = ['秦始皇修长城','Turing 破译 Enigma','Python 装饰器','郑和下西洋','世界杯历届冠军']

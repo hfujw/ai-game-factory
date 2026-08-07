@@ -38,8 +38,13 @@ class Settings(BaseSettings):
     receive_timeout: int = Field(30, ge=5)
     generation_timeout: int = Field(300, ge=60)
 
+    # ── 安全 ──
+    input_max_length: int = Field(500, ge=10, le=2000, description="用户输入最大长度（字符）")
+    max_connections_per_ip: int = Field(3, ge=1, le=20, description="单 IP 最大并发连接数")
+
     # ── 日志 ──
     log_prompts: bool = Field(False, description="是否在日志中记录完整 prompt（调试用）")
+    log_retention_days: int = Field(30, ge=1, le=365, description="日志保留天数")
 
     # ── 状态后端 ──
     state_backend: str = Field("memory", description="memory | redis")

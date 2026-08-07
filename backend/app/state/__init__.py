@@ -5,7 +5,7 @@
     count = await state.incr("rate:1.2.3.4:2026-08-06")
 """
 
-from app.config import settings
+from app.core.config import settings
 from .memory import MemoryBackend
 
 

@@ -1,7 +1,7 @@
 """AI-Native Workflow — FastAPI 入口。"""
 
 import logging
-from logging.handlers import RotatingFileHandler
+from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 import sys
 import os
 
@@ -25,9 +25,10 @@ _sh.setFormatter(logging.Formatter("%(asctime)s | %(name)-22s | %(levelname)-8s 
 root.addHandler(_sh)
 
 # 文件：DEBUG 及以上 → detail.log
-_fh = RotatingFileHandler(
+# 使用 TimedRotatingFileHandler：每天午夜轮转，保留 30 天
+_fh = TimedRotatingFileHandler(
     os.path.join(LOG_DIR, "detail.log"),
-    maxBytes=5 * 1024 * 1024, backupCount=10, encoding="utf-8",
+    when="midnight", interval=1, backupCount=30, encoding="utf-8",
 )
 _fh.setLevel(logging.DEBUG)
 _fh.setFormatter(logging.Formatter("%(asctime)s [%(name)s] %(levelname)s: %(message)s"))
@@ -47,9 +48,9 @@ import asyncio
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from app.llm_client import get_cost_summary
-from app.ws_manager import ws_manager
-from app.rate_limiter import rate_limiter
+from app.llm.client import get_cost_summary
+from app.network.ws_manager import ws_manager
+from app.network.rate_limiter import rate_limiter
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
@@ -85,7 +86,7 @@ async def health():
 
     # Config 完整性
     try:
-        from app.config import settings
+        from app.core.config import settings
         _ = settings.deepseek_api_key
         checks["config"] = "ok"
     except Exception as e:
@@ -101,6 +102,37 @@ async def health():
 
     all_ok = all(v == "ok" or v.startswith("ok") or "ready" in v for v in checks.values())
     return {"status": "healthy" if all_ok else "degraded", "checks": checks}
+
+
+@app.get("/api/health/live")
+async def health_live():
+    """Liveness 探针——进程是否存活。Kubernetes/Docker 用这个决定是否重启容器。"""
+    return {"status": "alive"}
+
+
+@app.get("/api/health/ready")
+async def health_ready():
+    """Readiness 探针——依赖是否就绪。Kubernetes 用这个决定是否路由流量。"""
+    import os as _os
+
+    checks = {}
+    # Config + API Key
+    try:
+        from app.core.config import settings
+        _ = settings.deepseek_api_key
+        checks["config"] = "ok"
+    except Exception as e:
+        checks["config"] = f"fail: {e}"
+
+    # Playwright 浏览器（render 工具必需）
+    pw_dir = _os.path.expanduser("~/.cache/ms-playwright")
+    checks["playwright_browser"] = "ok" if _os.path.isdir(pw_dir) else "missing"
+
+    all_ok = all(v == "ok" for v in checks.values())
+    return {
+        "status": "ready" if all_ok else "not_ready",
+        "checks": checks,
+    }
 
 
 @app.get("/api/cost")
@@ -152,7 +184,7 @@ def _get_client_ip(websocket: WebSocket) -> str:
 
 
 from app.demo import DEMO_TOPICS, load_demo_html
-from app.metrics import metrics_text
+from app.core.metrics import metrics_text
 from fastapi import Response
 
 
@@ -188,10 +220,12 @@ async def get_rate_limit():
 async def generate_page(websocket: WebSocket):
     """WebSocket 端点——接收用户输入，触发 Agent Pipeline，实时推送进度。"""
     session_id = str(uuid.uuid4())[:8]
-    if not await ws_manager.connect(session_id, websocket):
+    client_ip = _get_client_ip(websocket)
+    if not await ws_manager.connect(session_id, websocket, client_ip):
         return  # 连接被拒绝（超上限等），不做后续处理
 
     session_cost_records: list[dict] = []  # 本连接独立记账，不碰全局
+    t_start = None  # 用于记录生成开始时间（GENERATION_DURATION 埋点）
 
     try:
         # 接收用户输入（加超时，防止连接挂起）
@@ -207,16 +241,24 @@ async def generate_page(websocket: WebSocket):
             await ws_manager.send_failed(session_id, "请输入一个主题", [])
             return
 
+        # P0 安全修复：输入长度限制——防止恶意长文本耗尽 API 预算
+        from app.core.config import settings
+        if len(user_input) > settings.input_max_length:
+            logger.warning("输入过长拒绝 [%s] len=%d max=%d", session_id, len(user_input), settings.input_max_length)
+            await ws_manager.send_failed(
+                session_id,
+                f"输入过长（最多 {settings.input_max_length} 字符），请精简后重试",
+                DEMO_TOPICS,
+            )
+            return
+
         # ── 速率限制 ──
-        client_ip = _get_client_ip(websocket)
         allowed, reason = await rate_limiter.can_generate(client_ip)
         if not allowed:
             logger.info("限流拒绝 [%s] IP=%s reason=%s", session_id, client_ip, reason)
             await ws_manager.send_failed(session_id, reason, DEMO_TOPICS)
             return
 
-        # 通知前端开始
-        await ws_manager.send_progress(session_id, "system", "running", f"收到事件：「{user_input}」")
         logger.info("新请求 | session=%s | topic=%s | ip=%s", session_id, user_input, client_ip)
 
         # T+0 立即推第一条日志，不等 Agent 启动
@@ -229,6 +271,8 @@ async def generate_page(websocket: WebSocket):
         })
 
         # 运行编排Agent
+        import time as _time
+        t_start = _time.monotonic()
         from app.agents.orchestrator import orchestrator_node
 
         failed_sent = False  # 防止双重失败推送
@@ -270,7 +314,7 @@ async def generate_page(websocket: WebSocket):
                 failed_sent = True
 
         # 把独立账本传给编排器（加全局超时保护）
-        from app.config import settings
+        from app.core.config import settings
         try:
             result = await asyncio.wait_for(
                 orchestrator_node({
@@ -294,8 +338,11 @@ async def generate_page(websocket: WebSocket):
         # 记录花费（在生成结束后累加，用于日预算帽）
         await rate_limiter.record_cost(cost["estimated_cost_rmb"])
 
-        from app.metrics import GENERATIONS
+        from app.core.metrics import GENERATIONS, GENERATION_DURATION, GENERATION_STEPS
         GENERATIONS.labels(status=result.get("status", "unknown")).inc()
+        if t_start:
+            GENERATION_DURATION.observe(_time.monotonic() - t_start)
+            GENERATION_STEPS.observe(result.get("steps", 0))
 
         if result.get("status") == "success":
             # 成功才计为一次试用（失败不扣）
@@ -324,4 +371,4 @@ async def generate_page(websocket: WebSocket):
         except Exception:
             pass
     finally:
-        await ws_manager.disconnect(session_id)
+        await ws_manager.disconnect(session_id, client_ip)

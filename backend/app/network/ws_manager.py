@@ -14,25 +14,29 @@ class WSManager:
     def __init__(self):
         """建立通讯本"""
         self.connections: Dict[str, WebSocket] = {}
+        self._ip_counts: Dict[str, int] = {}  # IP → 当前连接数
 
     @property
     def active_count(self) -> int:
         return len(self.connections)
 
-    async def connect(self, session_id: str, websocket: WebSocket) -> bool:
-        ok = await self._do_connect(session_id, websocket)
+    async def connect(self, session_id: str, websocket: WebSocket, client_ip: str = "") -> bool:
+        ok = await self._do_connect(session_id, websocket, client_ip)
         if ok:
-            from app.metrics import WS_CONNECTIONS
+            from app.core.metrics import WS_CONNECTIONS
             WS_CONNECTIONS.inc()
         return ok
 
-    async def disconnect(self, session_id: str):
+    async def disconnect(self, session_id: str, client_ip: str = ""):
         if session_id in self.connections:
-            from app.metrics import WS_CONNECTIONS
+            from app.core.metrics import WS_CONNECTIONS
             WS_CONNECTIONS.dec()
         self.connections.pop(session_id, None)
+        # 清理 IP 计数
+        if client_ip and client_ip in self._ip_counts:
+            self._ip_counts[client_ip] = max(0, self._ip_counts[client_ip] - 1)
 
-    async def _do_connect(self, session_id: str, websocket: WebSocket) -> bool:
+    async def _do_connect(self, session_id: str, websocket: WebSocket, client_ip: str = "") -> bool:
         """接受 WebSocket 连接。返回 False 表示被拒绝，调用方应直接 return。"""
         # 1. 连接数上限——防止资源耗尽
         if len(self.connections) >= MAX_CONNECTIONS:
@@ -40,16 +44,26 @@ class WSManager:
             await websocket.close(code=1013, reason="服务器繁忙，请稍后重试")
             return False
 
+        # 1.5. 单 IP 连接数限制——防止单个 IP 占满所有连接
+        if client_ip and client_ip not in ("127.0.0.1", "::1", "localhost"):
+            from app.core.config import settings
+            current = self._ip_counts.get(client_ip, 0)
+            if current >= settings.max_connections_per_ip:
+                logger.warning("IP 连接数超限 [%s] ip=%s count=%d", session_id, client_ip, current)
+                await websocket.close(code=1013, reason="连接过于频繁，请稍后重试")
+                return False
+            self._ip_counts[client_ip] = current + 1
+
         # 2. 踢掉同 session_id 的旧连接——防止 fd 泄漏
         old = self.connections.pop(session_id, None)
         if old is not None:
-            from app.metrics import WS_CONNECTIONS
+            from app.core.metrics import WS_CONNECTIONS
             WS_CONNECTIONS.dec()
             logger.debug("踢掉旧连接 [%s]", session_id)
             try:
                 await old.close(code=1000, reason="新连接取代")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("关闭旧连接失败: %s", e)
 
         await websocket.accept()
         self.connections[session_id] = websocket
@@ -61,9 +75,10 @@ class WSManager:
         for sid, ws in list(self.connections.items()):
             try:
                 await ws.close(code=1001, reason="服务器维护中")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("shutdown 关闭连接失败 [%s]: %s", sid, e)
         self.connections.clear()
+        self._ip_counts.clear()
 
     async def _safe_send(self, session_id: str, payload: dict):
         """安全发送：连接断开时静默处理，不抛崩主流程"""
@@ -75,15 +90,6 @@ class WSManager:
         except Exception as e:
             logger.debug("WebSocket 发送失败 [%s]: %s", session_id, str(e))
             self.connections.pop(session_id, None)
-
-    async def send_progress(self, session_id: str, agent: str, status: str, message: str, data: dict = None):
-        await self._safe_send(session_id, {
-            "type": "agent_progress",
-            "agent": agent,
-            "status": status,
-            "message": message,
-            "data": data or {},
-        })
 
     async def send_json(self, session_id: str, payload: dict):
         await self._safe_send(session_id, payload)

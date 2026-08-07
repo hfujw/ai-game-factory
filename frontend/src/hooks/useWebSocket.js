@@ -4,7 +4,6 @@ import { useState, useRef, useCallback } from 'react'
 const WS_URL = `ws${location.protocol === 'https:' ? 's' : ''}://${window.location.host}/ws/generate`
 
 export function useWebSocket() {
-  const [statuses, setStatuses] = useState({})
   const [messages, setMessages] = useState([])
   const [pageHtml, setPageHtml] = useState(null)
   const [streamingHtml, setStreamingHtml] = useState('')
@@ -37,23 +36,6 @@ export function useWebSocket() {
         const data = JSON.parse(event.data)
 
         switch (data.type) {
-          case 'agent_progress':
-            setStatuses(prev => ({
-              ...prev,
-              [data.agent]: {
-                status: data.status,
-                message: data.message,
-                retries: data.data?.retry ?? (prev[data.agent]?.retries || 0),
-              },
-            }))
-            setMessages(prev => [...prev, {
-              id: ++logIdRef.current,
-              time: new Date().toLocaleTimeString(),
-              agent: data.agent,
-              detail: data.message,
-            }])
-            break
-
           case 'html_chunk':
             setStreamingHtml(data.html || '')
             break
@@ -161,7 +143,6 @@ export function useWebSocket() {
     lastSend.current = now
 
     // Reset state
-    setStatuses({})
     setMessages([])
     setPageHtml(null)
     setStreamingHtml('')
@@ -184,7 +165,6 @@ export function useWebSocket() {
     setPageHtml(null)
     setStreamingHtml('')
     setError(null)
-    setStatuses({})
     setMessages([])
   }, [])
 
@@ -199,7 +179,6 @@ export function useWebSocket() {
     }
 
     // 重置状态
-    setStatuses({})
     setMessages([])
     setPageHtml(null)
     setStreamingHtml('')
@@ -226,5 +205,5 @@ export function useWebSocket() {
     }
   }, [])
 
-  return { statuses, messages, pageHtml, streamingHtml, error, isGenerating, sendEvent, loadDemo, cancel, dismiss }
+  return { messages, pageHtml, streamingHtml, error, isGenerating, sendEvent, loadDemo, cancel, dismiss }
 }

@@ -1,7 +1,6 @@
 """LLM 客户端 — DeepSeek API 异步封装。"""
 
 import os
-import re
 import time
 import logging
 import asyncio
@@ -44,14 +43,6 @@ def get_cost_summary(records: list[dict] | None = None) -> dict:
     }
 
 
-def _strip_markdown_fence(text: str) -> str:
-    """去掉 LLM 响应中的 markdown 代码围栏。用 regex 替代硬编码长度——支持 ```json、```html、```python 等任意语言标记。"""
-    text = text.strip()
-    text = re.sub(r'^```[a-zA-Z]*\s*\n?', '', text)   # 开头 fence（``` 后可跟任意语言标记）
-    text = re.sub(r'\n?```\s*$', '', text)              # 结尾 fence
-    return text.strip()
-
-
 async def chat(prompt: str, system: str = "", model: str = None, temperature: float = 0.7,
                max_tokens: int = 16384, session_records: list[dict] | None = None,
                label: str = "unknown") -> str:
@@ -67,7 +58,7 @@ async def chat(prompt: str, system: str = "", model: str = None, temperature: fl
 
     last_error = None
     t0 = time.monotonic()
-    from app.circuit_breaker import llm_breaker
+    from app.llm.circuit_breaker import llm_breaker
     for attempt in range(MAX_RETRIES + 1):
         try:
             response = await llm_breaker.call(
@@ -103,7 +94,7 @@ async def chat(prompt: str, system: str = "", model: str = None, temperature: fl
                 else:
                     _cost_records.append(entry)
                 # Prometheus 指标
-                from app.metrics import LLM_REQUESTS, LLM_LATENCY
+                from app.core.metrics import LLM_REQUESTS, LLM_LATENCY
                 LLM_LATENCY.labels(tool=label).observe(time.monotonic() - t0)
                 LLM_REQUESTS.labels(status="success", tool=label).inc()
 
@@ -122,7 +113,7 @@ async def chat(prompt: str, system: str = "", model: str = None, temperature: fl
                 await asyncio.sleep(wait)
             else:
                 logger.error("LLM call failed after %d attempts: %s", MAX_RETRIES + 1, e)
-                from app.metrics import LLM_REQUESTS, LLM_LATENCY
+                from app.core.metrics import LLM_REQUESTS, LLM_LATENCY
                 LLM_LATENCY.labels(tool=label).observe(time.monotonic() - t0)
                 LLM_REQUESTS.labels(status="error", tool=label).inc()
 
@@ -152,29 +143,69 @@ async def chat_stream(prompt: str, system: str = "", model: str = None,
 
     t0 = _time.monotonic()
     try:
-        response = await client.chat.completions.create(
-            model=model or DEFAULT_MODEL,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stream=True,
-            stream_options={"include_usage": True},
-        )
+        # DeepSeek 兼容层不一定支持 stream_options——报错就降级
+        try:
+            response = await client.chat.completions.create(
+                model=model or DEFAULT_MODEL,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=True,
+                stream_options={"include_usage": True},
+            )
+        except Exception as e:
+            logger.debug("stream_options 不支持，降级重试: %s", e)
+            response = await client.chat.completions.create(
+                model=model or DEFAULT_MODEL,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=True,
+            )
 
         total_tokens = 0
+        prompt_tokens = 0
+        completion_tokens = 0
+        completion_chars = 0
         async for chunk in response:
             if chunk.choices and chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+                text = chunk.choices[0].delta.content
+                yield text
+                completion_chars += len(text)
             if chunk.usage:
                 total_tokens = chunk.usage.total_tokens
+                prompt_tokens = chunk.usage.prompt_tokens or 0
+                completion_tokens = chunk.usage.completion_tokens or 0
+
+        # 兜底：DeepSeek 不一定返回 usage，拿不到精确值就用字符数估算
+        # 1 token ≈ 4 字符（中文约 2 字符，英文约 4 字符，取 4 保守估计）
+        if prompt_tokens == 0:
+            prompt_tokens = max(1, len(prompt) // 4)
+        if completion_tokens == 0:
+            completion_tokens = max(1, completion_chars // 4)
+
+        # 记账：写入独立账本或全局记录
+        entry = {
+            "input_tokens": prompt_tokens,
+            "output_tokens": completion_tokens,
+            "model": model or DEFAULT_MODEL,
+        }
+        if session_records is not None:
+            session_records.append(entry)
+        else:
+            _cost_records.append(entry)
 
         # Prometheus 埋点
-        from app.metrics import LLM_REQUESTS, LLM_LATENCY
+        from app.core.metrics import LLM_REQUESTS, LLM_LATENCY
         LLM_LATENCY.labels(tool=label).observe(_time.monotonic() - t0)
         LLM_REQUESTS.labels(status="success", tool=label).inc()
 
+        logger.info("LLM stream tokens: in=%d out=%d total=%d | 累计¥%.4f",
+                    prompt_tokens, completion_tokens, total_tokens,
+                    get_cost_summary(session_records)["estimated_cost_rmb"])
+
     except Exception:
-        from app.metrics import LLM_REQUESTS, LLM_LATENCY
+        from app.core.metrics import LLM_REQUESTS, LLM_LATENCY
         LLM_LATENCY.labels(tool=label).observe(_time.monotonic() - t0)
         LLM_REQUESTS.labels(status="error", tool=label).inc()
         raise

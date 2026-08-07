@@ -1,26 +1,51 @@
-# 一键启动：docker-compose up
+# 一键启动：docker-compose up -d
 # 一键停止：docker-compose down
 
 version: "3.8"
 
 services:
+  # ── Caddy 反代 + 自动 HTTPS ──
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - ./frontend/dist:/app/frontend/dist:ro
+      - caddy_logs:/var/log/caddy
+
+  # ── 后端 ──
   backend:
     build: ./backend
-    ports:
-      - "8000:8000"
+    restart: unless-stopped
+    expose:
+      - "8000"
     env_file:
       - ./backend/.env
     volumes:
-      - ./backend/logs:/app/logs        # 日志持久化
-      - ./backend/demos:/app/demos      # demo HTML 持久化
-    restart: unless-stopped
+      - ./backend/logs:/app/logs          # 日志持久化
+      - ./backend/demos:/app/demos        # demo HTML 持久化
+      - ./backend/data:/app/data          # SQLite + ChromaDB 持久化
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
-  # 未来扩展：切 Redis 时取消下面的注释
+  # ── Redis（Phase 2 启用）──
   # redis:
   #   image: redis:7-alpine
   #   restart: unless-stopped
   #   volumes:
   #     - redis_data:/data
-  #
-  # volumes:
-  #   redis_data:
+
+volumes:
+  caddy_data:
+  caddy_config:
+  caddy_logs:
+  # redis_data:

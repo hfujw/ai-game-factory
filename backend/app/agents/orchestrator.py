@@ -10,15 +10,14 @@
 import asyncio
 import json
 import logging
-from app.config import settings
-from app.llm_client import chat_stream, _strip_markdown_fence
-from app.tools import tool_search, tool_design, tool_compose, tool_verify
+from app.core.config import settings
+from app.llm.client import chat_stream
+from app.llm.parser import strip_fence, clean_thought
+from app.tools import tool_search, tool_design, tool_compose, tool_verify, TOOL_COST
 from app.knowledge.kb import get_event_by_keyword, event_to_search_results, _name
+from app.agents.evaluate import evaluate_material
 
 logger = logging.getLogger(__name__)
-
-# ── 预算（估算） ──
-TOOL_COST = {"search": 0.03, "design": 0.05, "compose": 0.08, "render": 0.15, "verify": 0.05}
 
 ORCHESTRATOR_SYSTEM_PROMPT = """你是一个视觉叙事引擎。用户给你一个主题，你生成一个好看的HTML页面。
 
@@ -86,12 +85,24 @@ async def orchestrator_node(state: dict) -> dict:
     "cost_records": state.get("_cost_records", []),
     }
 
-    # 本地知识库：关键词匹配。没命中就空着——LLM 自己决定搜不搜。
-    # 向量检索不自动预填充——KB 只有计算机史，中国历史查询会被匹配到错误条目。
+    # 本地知识库：关键词匹配 → 没命中 → 语义向量检索兜底
+    # "嬴政" 能匹配到 "秦始皇修长城"——关键词做不到的，向量能做到。
     kb_event = get_event_by_keyword(user_input)
     if kb_event:
         ctx["material"].extend(event_to_search_results(kb_event))
         logger.info("KB命中 | session=%s | topic=%s", ctx["session_id"], _name(kb_event))
+    else:
+        from app.knowledge.vector_store import vector_search
+        try:
+            hits = vector_search(user_input, top_k=3, min_distance=1.5)
+            for h in hits:
+                event = get_event_by_keyword(h["title"])
+                if event:
+                    ctx["material"].extend(event_to_search_results(event))
+                    logger.info("向量命中 | session=%s | query='%s' → '%s'",
+                                ctx["session_id"], user_input, _name(event))
+        except Exception as e:
+            logger.debug("向量检索不可用: %s", e)  # ChromaDB 不可用时静默跳过
 
     while ctx["steps"] < ctx["max_steps"] and ctx["budget_spent"] < ctx["budget_total"]:
 
@@ -172,7 +183,7 @@ async def orchestrator_node(state: dict) -> dict:
 
         # 5. 搜索后评估素材质量（信息通知 LLM，不替 LLM 做决策）
         if tool_name == "search" and not ctx.get("honest_mode"):
-            eval_result = _evaluate_material(ctx["material"], ctx["user_input"])
+            eval_result = evaluate_material(ctx["material"], ctx["user_input"])
             ctx["material_level"] = eval_result
             if eval_result["level"] in ("low", "none") and push:
                 await push({"type": "thinking", "step": ctx["steps"],
@@ -249,24 +260,6 @@ async def orchestrator_node(state: dict) -> dict:
             "issues": ctx["issues"], "tool_history": ctx["tool_history"]}
 
 
-def _evaluate_material(material: list, user_input: str) -> dict:
-    """外置评估：素材够不够、关不相关。不是 LLM 判断。"""
-    if not material:
-        return {"level": "none", "reason": "零素材", "suggestion": "诚实说明素材不足"}
-    query = user_input.lower()
-    # 检查多少素材里包含用户输入的关键词
-    relevant = [m for m in material if any(
-        w in (m.get("title","") + m.get("snippet", m.get("content",""))).lower()
-        for w in query.split() if len(w) >= 2
-    )]
-    if len(relevant) >= 3:
-        return {"level": "high", "reason": f"{len(relevant)}条直接相关", "suggestion": "正常生成"}
-    elif len(relevant) >= 1:
-        return {"level": "medium", "reason": f"仅{len(relevant)}条弱相关", "suggestion": "降级：基于现有素材做关联呈现"}
-    else:
-        return {"level": "low", "reason": "素材与主题不直接相关", "suggestion": "诚实模式：生成资料局限声明页"}
-
-
 async def _decide(ctx: dict) -> dict:
     """让LLM决定：下一步干什么。"""
     # 构建简洁上下文
@@ -331,22 +324,10 @@ HTML长度：{len(ctx.get('html',''))}字符 | 上次验证：{'通过' if ctx['
                 await push({"type": "thinking_stream", "step": ctx["steps"] + 1,
                             "chunk": chunk, "tool": "decide", "budget": ctx["budget_spent"]})
 
-        result = _strip_markdown_fence(accumulated)
+        result = strip_fence(accumulated)
         decision = json.loads(result)
-        # 兜底：如果 LLM 还是重复开场白，截断
-        thought = decision.get("thought", "")
-        if ctx["steps"] > 0:
-            redundant = [f"想了解{ctx['user_input']}", f"对{ctx['user_input']}这个名字",
-                        "我不确定他是谁", "我不确定具体是谁", "我对这个人没有太多"]
-            for pattern in redundant:
-                if pattern in thought[:80]:
-                    # 找第一个"因此""所以""我决定""现在"截断
-                    for marker in ["因此", "所以", "我决定", "接下来", "现在", "基于", "上一步", "搜索", "素材"]:
-                        idx = thought.find(marker, 20)
-                        if idx > 0 and idx < 120:
-                            decision["thought"] = thought[idx:]
-                            break
-                    break
+        decision["thought"] = clean_thought(
+            decision.get("thought", ""), ctx["user_input"], ctx["steps"])
         return decision
     except Exception as e:
         ctx["_decide_fail_count"] = ctx.get("_decide_fail_count", 0) + 1
@@ -389,22 +370,17 @@ async def _execute_tool(tool_name: str, params: dict, ctx: dict) -> dict:
         return result
 
     elif tool_name == "render":
-        from app.tools import tool_render_stream
-        result = None
-        async for frame in tool_render_stream(
-            ctx["design"] or {}, ctx["content"] or {}, ctx.get("visual"),
+        from app.agents.render_agent import RenderAgent
+        result = await RenderAgent().run(
+            ctx["design"] or {},
+            ctx["content"] or {},
+            push=ctx.get("_push"),
             session_records=ctx.get("cost_records"),
-        ):
-            if frame.get("complete"):
-                result = frame
-            else:
-                # 逐段推送给前端——页面"长出来"
-                push = ctx.get("_push")
-                if push:
-                    await push({"type": "html_chunk", "html": frame["html"]})
-        if result and result.get("html"):
+        )
+        # 始终写 HTML（有内容就写）——verify 需要审实际内容而非空字符串
+        if result.get("html"):
             ctx["html"] = result["html"]
-        return result or {"tool": "render", "html": "", "complete": False, "length": 0}
+        return result
 
     elif tool_name == "verify":
         result = await tool_verify(ctx.get("html", ""), ctx.get("content") or {})
