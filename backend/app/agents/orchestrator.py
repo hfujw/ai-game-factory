@@ -13,7 +13,7 @@ import logging
 from app.core.config import settings
 from app.llm.client import chat_stream
 from app.llm.parser import strip_fence, clean_thought
-from app.tools import tool_search, tool_design, tool_compose, tool_verify, TOOL_COST
+from app.tools import tool_search, tool_verify, TOOL_COST
 from app.knowledge.kb import get_event_by_keyword, event_to_search_results, _name
 from app.agents.evaluate import evaluate_material
 
@@ -357,16 +357,16 @@ async def _execute_tool(tool_name: str, params: dict, ctx: dict) -> dict:
         ctx["material"].extend(result.get("results", []))
         return result
 
-    elif tool_name == "design":
-        result = await tool_design(ctx["material"], ctx["user_input"],
-                                   session_records=ctx.get("cost_records"))
-        ctx["design"] = result
-        return result
-
-    elif tool_name == "compose":
-        result = await tool_compose(ctx["material"], ctx["design"] or {}, ctx["user_input"],
-                                    session_records=ctx.get("cost_records"))
-        ctx["content"] = result
+    elif tool_name == "design" or tool_name == "compose":
+        # DesignerAgent 合并 design+compose——内部自循环（设计→试写→不满意换形式）
+        from app.agents.designer_agent import DesignerAgent
+        result = await DesignerAgent().run(
+            ctx["material"], ctx["user_input"],
+            push=ctx.get("_push"),
+            session_records=ctx.get("cost_records"),
+        )
+        ctx["design"] = result.get("design")
+        ctx["content"] = result.get("content")
         return result
 
     elif tool_name == "render":
@@ -396,13 +396,14 @@ def _summarize(result: dict) -> str:
         n = result.get("count", 0)
         return f"搜索结束，共找到 {n} 条可信素材" if n > 0 else "搜索结束，未找到新素材"
     elif tool == "design":
-        comps = result.get("components", [])
-        r = result.get("rationale", "")
-        return f"选定「{'、'.join(comps)}」——{r[:60]}" if comps else f"设计完成：{r[:80]}"
-    elif tool == "compose":
-        n = len(result.get("blocks", []))
-        title = result.get("title", "")
-        return f"文案完成，{n} 个内容块——{title or '已生成'}"
+        # DesignerAgent 合并了 design+compose
+        design = result.get("design", {})
+        content = result.get("content", {})
+        comps = design.get("components", [])
+        r = design.get("rationale", "")
+        n = len(content.get("blocks", []))
+        t = content.get("title", "")
+        return f"设计+文案：「{'、'.join(comps)}」——{n}块「{t or r[:30]}」"
     elif tool == "render":
         length = result.get("length", 0)
         ok = result.get("complete")
