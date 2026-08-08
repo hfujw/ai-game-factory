@@ -134,12 +134,12 @@ async def orchestrator_node(state: dict) -> dict:
             decision["tool"] = "render"  # 不单独 push——后面的统一 push 会推
 
         # 1.6. 搜索次数硬拦截
-        search_count = sum(1 for h in ctx["tool_history"] if h["tool"] == "search")
-        if decision.get("tool") == "search" and search_count >= ctx["search_max"]:
+        search_rounds = sum(1 for h in ctx["tool_history"] if h["tool"] == "search")
+        if decision.get("tool") == "search" and search_rounds >= ctx["search_max"]:
             decision["tool"] = "design"
             if push:
                 await push({"type": "thinking", "step": ctx["steps"] + 1,
-                            "thought": f"已搜索{search_count}次，达到上限。orchestrator 强制切换为 design——LLM 请基于现有素材或自身知识继续。",
+                            "thought": f"已调用 {search_rounds} 轮搜索，达到上限。orchestrator 强制切换为 design——LLM 请基于现有素材或自身知识继续。",
                             "tool": "system", "budget": ctx["budget_spent"]})
 
         # 2. ⚡ 思考先推到前端（只 push 一次，且确保是纯文本）
@@ -245,8 +245,8 @@ async def orchestrator_node(state: dict) -> dict:
             continue  # 跳到循环顶部，force_next_tool 块接管执行
 
     # 循环结束但没通过 → 推"死亡报告"到 DecisionLog
-    search_count = sum(1 for h in ctx['tool_history'] if h['tool'] == 'search')
-    reason = f"搜了 {search_count} 次没找到直接素材" if search_count >= 2 else "多次生成尝试仍不满意"
+    search_rounds = sum(1 for h in ctx['tool_history'] if h['tool'] == 'search')
+    reason = f"搜了 {search_rounds} 轮没找到直接素材" if search_rounds >= 2 else "多次生成尝试仍不满意"
     logger.info("orchestrator=exhausted | session=%s | steps=%d | cost=¥%.4f | reason=%s",
                 ctx["session_id"], ctx["steps"], ctx["budget_spent"], reason)
     if push:
@@ -301,11 +301,11 @@ HTML长度：{len(ctx.get('html',''))}字符 | 上次验证：{'通过' if ctx['
         summary += f"\n⚠️【诚实模式】{eval_result.get('reason','素材不足')}。禁止 design/compose，直接 render 一个诚实页面。不要编造。只生成一次。"
 
     # 搜索死循环防护：连续2次搜空就强制禁止
-    search_count = sum(1 for h in ctx['tool_history'] if h['tool'] == 'search')
+    search_rounds = sum(1 for h in ctx['tool_history'] if h['tool'] == 'search')
     recent_searches = [h for h in ctx['tool_history'][-2:] if h['tool'] == 'search']
     all_empty = all("0条" in h.get("result_summary", "") or "不相关" in h.get("result_summary", "") or "未找到" in h.get("result_summary", "") for h in recent_searches)
-    if search_count >= 3 or (search_count >= 2 and all_empty):
-        summary += f"\n⚠️ 已搜索 {search_count} 次（最近2次无结果），禁止再搜！基于现有素材做设计，或诚实说素材不足。"
+    if search_rounds >= 3 or (search_rounds >= 2 and all_empty):
+        summary += f"\n⚠️ 已调用 {search_rounds} 轮搜索（最近2轮无结果），禁止再搜！基于现有素材做设计，或诚实说素材不足。"
 
     try:
         # 流式思考——前端 DecisionLog 逐字显示
