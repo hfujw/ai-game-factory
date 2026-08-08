@@ -7,7 +7,7 @@ from app.tools.render import tool_render, tool_render_stream
 from app.tools.verify import tool_verify
 
 # ── 预算（估算）──
-TOOL_COST = {"search": 0.03, "design": 0.05, "compose": 0.08, "render": 0.15, "verify": 0.05}
+TOOL_COST = {"search": 0.03, "design": 0.13, "render": 0.15, "verify": 0.05}  # design = design+compose 合并
 
 # ── 工具注册表：tool_name → 函数 ──
 TOOL_MAP = {

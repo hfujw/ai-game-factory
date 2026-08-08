@@ -1,7 +1,7 @@
 # AI-Native Workflow · 时光像素
 
 > 最后更新：2026-08-08
-> 当前阶段：Phase 1 RenderAgent 完成，28 tests，架构分层完毕
+> 当前阶段：Phase 1-4 完成（3 Agent + 消息总线），28 tests，架构分层完毕
 
 ## 项目是什么
 
@@ -74,25 +74,25 @@ frontend/src/
 
 ## 关键设计决策
 
-1. 不用 LangGraph——async while 循环 + LLM 决策，5 个工具不需要状态图
-2. RenderAgent 内部自检——render 是 token 最大头，Agent 内部自检减少回退浪费
+1. 不用 LangGraph——async while 循环 + LLM 决策，当前规模不需要状态图
+2. 3 Agent 架构——Researcher（搜索）Designer（设计+文案）Render（自检+缓存），每个有内部决策循环
 3. 审查外置——Playwright 真执行 + 硬规则 + 事实核查，不是 LLM 猜对错
 4. 诚实模式——素材不足自动降级，标注"资料有限"，不编造
-5. 搜索死循环防护——3 次上限 或 最近 2 次全空强制禁止
-6. 向量语义检索——"嬴政"匹配到"秦始皇"，关键词做不到的
-7. 断路器——连续 3 次 LLM 失败熔断 30s，防级联故障
-8. 预算双控——虚拟 ¥1/次 + 真实 ¥5/天，公网不破产
-9. DecisionLog 是核心产品——AI 思考过程全透明
-10. 流式渲染——contentDocument.write 不频闪
+5. 搜索死循环防护——ResearcherAgent 内部处理（换词重试 + 向量兜底 + 自动停止）
+6. 断路器——连续 3 次 LLM 失败熔断 30s，防级联故障
+7. 预算双控——虚拟 ¥1/次 + 真实 ¥5/天，公网不破产
+8. DecisionLog 是核心产品——AI 思考过程全透明
+9. 流式渲染——contentDocument.write 不频闪
+10. 消息总线——asyncio.Queue 基础设施，Phase 5 换 Redis Stream
 
 ## 当前状态
 
 - ✅ 架构分层完毕（7 目录，单向依赖，无循环）
-- ✅ Phase 1 RenderAgent 上线（自检 + 缓存 + 重试，3 轮审查修 15 问题）
-- ✅ 安全加固（输入长度限制 + IP 连接限制 + 日志 30 天 + health 双探针）
+- ✅ Phase 1-4 完成：ResearcherAgent + DesignerAgent + RenderAgent + MessageBus
+- ✅ 安全加固（输入长度限制 + IP 连接限制 + 日志 30 天 + WS断开取消任务）
 - ✅ 合规补全（LICENSE MIT + PRIVACY GDPR + SECURITY STRIDE）
 - ✅ 28 tests 全绿
-- 📋 下一步：Phase 2 DesignerAgent（合并 design+compose）
+- 📋 下一步：Phase 5 Redis（StateBackend 已就位，改一行配置即可）
 
 ## 运行
 

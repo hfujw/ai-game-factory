@@ -33,9 +33,8 @@ flowchart TD
     WS --> RL[Rate Limiter<br/>IP 1次/天 · ¥5 日预算帽]
     RL --> O[Orchestrator · ReAct 循环]
     O --> D[_decide · LLM 决策]
-    D -->|自主选择| S[Search<br/>Tavily + KB + 向量检索]
-    D -->|自主选择| DE[Design<br/>选叙事形式]
-    D -->|自主选择| C[Compose<br/>文案 + 来源标注]
+    D -->|自主选择| S[ResearcherAgent<br/>自主搜索 + 向量兜底]
+    D -->|自主选择| DE[DesignerAgent<br/>设计+文案合并]
     D -->|自主选择| R[RenderAgent<br/>自检 + 缓存 + 重试]
     D -->|自主选择| V[Verify<br/>Playwright 真执行]
     V -->|通过| HTML[交互式 HTML]
@@ -123,16 +122,20 @@ backend/app/
 │   ├── ws_manager.py           WebSocket 连接管理
 │   └── rate_limiter.py         IP 限流 + 日预算帽
 │
-├── tools/                      🔧 5 个工具
-│   ├── search.py               Tavily + KB + 向量 + 相关性过滤
+├── tools/                      🔧 工具实现
+│   ├── search.py               Tavily + 广告过滤 + 相关性检查
 │   ├── design.py               选叙事形式（7 种组件）
 │   ├── compose.py              写文案 + 来源标注
 │   ├── render.py               HTML 流式生成
 │   └── verify.py               Playwright 真执行
 │
-├── agents/                     🧠 编排 + Agent
+├── agents/                     🧠 编排 + 3 Agent
 │   ├── orchestrator.py         ⭐ ReAct 主循环
+│   ├── researcher_agent.py    Phase 3：自主搜索（换词+向量+停止）
+│   ├── designer_agent.py      Phase 2：设计+文案合并（自循环）
 │   ├── render_agent.py         Phase 1：自检 + 缓存 + 重试
+│   ├── supervisor.py           Phase 4：消息总线编排器
+│   ├── message_bus.py          Phase 4：asyncio.Queue 消息总线
 │   ├── evaluate.py             素材评估（非 LLM 判定）
 │   └── context.py              AgentState 定义
 │
@@ -173,7 +176,8 @@ docker-compose.yml              一键部署
 
 | 决策 | 为什么 |
 |------|--------|
-| 不用 LangGraph | 当前 5 个工具的复杂度用 async while 循环最合适。tool 接口已标准化为 state-in/state-out，预留了 LangGraph 迁移能力 |
+| 不用 LangGraph | 当前规模用 async while 循环最合适。tool 接口已标准化为 state-in/state-out，预留了 LangGraph 迁移能力 |
+| 3 Agent 架构 | ResearcherAgent（搜索自主决策）+ DesignerAgent（设计+文案合并）+ RenderAgent（自检+缓存）。每个有内部决策循环 |
 | RenderAgent 内部自检 | render 是 token 消耗最大的一步（16384 tokens，¥0.15/次）——Agent 内部自检循环减少 verify→回退→重 render 的浪费 |
 | 验证层外置 | Playwright 真执行，不是 LLM 猜对错。正则硬规则 + 浏览器执行 + 事实核查三阶段 |
 | 诚实模式 | 素材不足时 LLM 主动降级为"资料有限"的诚实页面，不编造事实 |

@@ -1,7 +1,7 @@
 # 多 Agent 演化全景
 
-> Phase 1 已单独成文档：`docs/multi-agent-phase1-render.md`  
-> 本文档覆盖 Phase 2 ~ Phase 5，从"单 Agent 试点"到"分布式上线"
+> Phase 1-4 已完成 ✅ | Phase 5 待 Redis  
+> Phase 1 已单独成文档：`docs/multi-agent-phase1-render.md`
 
 ---
 
