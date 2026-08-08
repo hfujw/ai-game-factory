@@ -83,7 +83,7 @@ export default function App() {
           <div className="absolute z-50 top-[28%] left-1/2 -translate-x-1/2 w-[90vw] max-w-lg pointer-events-auto flex flex-col items-center gap-4">
             <SearchBubble onGenerate={sendEvent} isGenerating={isGenerating} onCancel={cancel} />
             <div className="flex flex-wrap justify-center gap-2">
-              {['秦始皇修长城','Turing 破译 Enigma','Python 装饰器','郑和下西洋','世界杯历届冠军'].map(t => (
+              {DEMO_TOPICS.map(t => (
                 <motion.button
                   key={t}
                   onClick={() => loadDemo(t)}

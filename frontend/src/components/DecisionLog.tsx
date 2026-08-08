@@ -142,9 +142,9 @@ export function DecisionLog({ messages, autoCollapse }: { messages:Message[]; au
 
 // ── 步骤进度线 ──
 
-const STEPS = ['search', 'design', 'compose', 'render', 'verify'] as const
+const STEPS = ['search', 'design', 'render', 'verify'] as const
 const STEP_LABELS: Record<string, string> = {
-  search: '搜', design: '定', compose: '书', render: '绘', verify: '鉴',
+  search: '搜', design: '设', render: '绘', verify: '鉴',
 }
 
 function StepProgress({ messages }: { messages: { agent: string; type?: string }[] }) {
