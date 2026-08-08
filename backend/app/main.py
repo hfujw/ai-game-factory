@@ -270,12 +270,13 @@ async def generate_page(websocket: WebSocket):
             "budget": 0,
         })
 
-        # 运行编排Agent
+        # 运行编排Agent（包成 Task，断开时能取消）
         import time as _time
         t_start = _time.monotonic()
         from app.agents.orchestrator import orchestrator_node
 
         failed_sent = False  # 防止双重失败推送
+        orch_task: asyncio.Task | None = None
 
         async def push(msg: dict):
             """实时推送到前端。"""
@@ -313,19 +314,20 @@ async def generate_page(websocket: WebSocket):
                 await ws_manager.send_failed(session_id, msg["reason"], [])
                 failed_sent = True
 
-        # 把独立账本传给编排器（加全局超时保护）
+        # 把独立账本传给编排器（包 Task + 全局超时）
         from app.core.config import settings
+        orch_task = asyncio.create_task(
+            orchestrator_node({
+                "session_id": session_id,
+                "user_input": user_input,
+                "_push": push,
+                "_cost_records": session_cost_records,
+            })
+        )
         try:
-            result = await asyncio.wait_for(
-                orchestrator_node({
-                    "session_id": session_id,
-                    "user_input": user_input,
-                    "_push": push,
-                    "_cost_records": session_cost_records,
-                }),
-                timeout=settings.generation_timeout,
-            )
+            result = await asyncio.wait_for(orch_task, timeout=settings.generation_timeout)
         except asyncio.TimeoutError:
+            orch_task.cancel()
             logger.warning("生成超时 | session=%s | timeout=%ds", session_id, settings.generation_timeout)
             await ws_manager.send_failed(session_id, "生成超时，请稍后重试", DEMO_TOPICS)
             return
@@ -363,7 +365,9 @@ async def generate_page(websocket: WebSocket):
             )
 
     except WebSocketDisconnect:
-        pass
+        if orch_task and not orch_task.done():
+            orch_task.cancel()
+            logger.info("用户断开，取消生成 | session=%s", session_id)
     except Exception as e:
         logger.exception("生成流程异常")
         try:

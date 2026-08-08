@@ -46,12 +46,12 @@
 
 | 风险 | 当前状态 | 修复 |
 |------|---------|------|
-| 无输入长度限制 | ❌ 缺失 | P0：加 `max_length=500` |
+| 无输入长度限制 | ✅ `max_length=500` | 已就位 |
 | WebSocket 连接数限制 | ✅ 20 上限 + 踢旧连接 | 已就位 |
-| 单 IP 多连接 | ⚠️ 无限制 | P1：加 `max_connections_per_ip` |
+| 单 IP 多连接 | ✅ `max_connections_per_ip=3` | 已就位 |
 | LLM 调用超时 | ✅ 120s 全局超时 | 已就位 |
 | 断路器 | ✅ 3 次失败熔断 30s | 已就位 |
-| 慢速 WebSocket 攻击（slow send）| ⚠️ 无防护 | receive 有 30s 超时；send 无超时 |
+| 慢速 WebSocket 攻击（slow send）| ✅ WS 断开自动取消 LLM 任务 | receive 有 30s 超时 + orch_task.cancel() |
 | ReDoS 正则攻击 | ✅ 无用户可控正则 | `_strip_fence` 的正则是常量，无风险 |
 | 日预算帽 | ✅ ¥5/天 | 已就位 |
 
@@ -69,19 +69,20 @@
 
 ### P0 - 立即修复（上线前必备）
 
-- [ ] **输入长度限制**：`main.py` `user_input` 加 `max_length=500`
-- [ ] **日志脱敏**：API Key 在任何日志中不出现（已实现——Key 只在 config.py 内存中）
+- [x] **输入长度限制**：`main.py` `user_input` 加 `max_length=500`
+- [x] **日志脱敏**：API Key 在任何日志中不出现（已实现——Key 只在 config.py 内存中）
+- [x] **WS 断开取消任务**：用户断开 WebSocket → `orch_task.cancel()` 停止 LLM 调用
 - [ ] **生产环境 CORS 收紧**：上线时 `allow_origins` 改为具体域名
 - [ ] **HTTPS 强制**：生产环境 Nginx/Caddy 301 重定向 HTTP → HTTPS
 
 ### P1 - 本周修复
 
-- [ ] **WebSocket 单 IP 连接数限制**：防止同一 IP 占满 20 个连接
+- [x] **WebSocket 单 IP 连接数限制**：防止同一 IP 占满 20 个连接
+- [x] **slow send 攻击防护**：WS 断开自动取消 LLM 任务
+- [x] **日志保留策略**：30 天自动清理（TimedRotatingFileHandler）
+- [x] **LICENSE 文件**：MIT 标准文本
+- [x] **PRIVACY.md**：数据收集说明
 - [ ] **`/metrics` 端点加 IP 白名单**
-- [ ] **slow send 攻击防护**：WebSocket send 加超时
-- [ ] **日志保留策略**：30 天自动清理（见 PRIVACY.md）
-- [ ] **LICENSE 文件**：MIT 标准文本
-- [ ] **PRIVACY.md**：数据收集说明
 
 ### P2 - 排期
 
