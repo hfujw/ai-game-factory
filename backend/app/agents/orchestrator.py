@@ -13,7 +13,7 @@ import logging
 from app.core.config import settings
 from app.llm.client import chat_stream
 from app.llm.parser import strip_fence, clean_thought
-from app.tools import tool_search, tool_verify, TOOL_COST
+from app.tools import tool_verify, TOOL_COST
 from app.knowledge.kb import get_event_by_keyword, event_to_search_results, _name
 from app.agents.evaluate import evaluate_material
 
@@ -348,13 +348,13 @@ async def _execute_tool(tool_name: str, params: dict, ctx: dict) -> dict:
     ctx["budget_spent"] += cost
 
     if tool_name == "search":
-        result = await tool_search(
-            query=params.get("query", ctx["user_input"]),
-            reason=params.get("reason", ""),
-            depth=params.get("depth", "quick"),
+        from app.agents.researcher_agent import ResearcherAgent
+        result = await ResearcherAgent().run(
+            topic=params.get("query", ctx["user_input"]),
             existing_material=ctx["material"],
+            session_records=ctx.get("cost_records"),
         )
-        ctx["material"].extend(result.get("results", []))
+        ctx["material"] = result.get("results", ctx["material"])
         return result
 
     elif tool_name == "design" or tool_name == "compose":
